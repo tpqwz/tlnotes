@@ -1,0 +1,28 @@
+name: Load source
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Import text archive
+        run: |
+          set -euo pipefail
+          html=$(curl -fsSL -A 'Mozilla/5.0' "https://tmpfiles.org/w6A3LE40C5JW/text.tar.gz")
+          url=$(printf '%s' "$html" | grep -oE 'https://tmpfiles.org/dl/[^"]+' | head -1)
+          echo "Downloading $url"
+          curl -fsSL -A 'Mozilla/5.0' -o /tmp/text.tar.gz "$url"
+          tar -tzf /tmp/text.tar.gz | wc -l
+          tar -xzf /tmp/text.tar.gz -C "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if [ -f android/gradlew ]; then git update-index --chmod=+x android/gradlew; fi
+          if [ -f startup.sh ]; then git update-index --chmod=+x startup.sh; fi
+          git commit -m "TLNotes 0.4.0-beta"
+          git push
