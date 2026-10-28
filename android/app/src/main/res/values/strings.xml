@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TLNotes</string>
+    <string name="title_activity_main">TLNotes</string>
+    <string name="package_name">app.tlnotes.journal</string>
+    <string name="custom_url_scheme">app.tlnotes.journal</string>
+</resources>

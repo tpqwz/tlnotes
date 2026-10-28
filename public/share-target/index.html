@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>TLNotes</title>
+<script>
+  (function () {
+    var params = new URLSearchParams(location.search);
+    var payload = {
+      title: params.get("title") || "",
+      text: params.get("text") || "",
+      url: params.get("url") || "",
+    };
+    try {
+      localStorage.setItem("tlnotes.inbox", JSON.stringify(payload));
+    } catch (e) {}
+    var next = location.pathname.replace(/\/share-target(?:\/index\.html)?\/?$/, "/");
+    location.replace(next || "/");
+  })();
+</script>
