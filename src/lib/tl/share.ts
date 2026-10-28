@@ -1,4 +1,5 @@
 import { citedQuotation, tidyUrl, type Note } from "@/lib/tl/model";
+import { deployedBase } from "@/lib/preview-path-prefix";
 
 const INBOX = "tlnotes.inbox";
 const SHARE_CACHE = "tlnotes-share";
@@ -166,7 +167,7 @@ async function readShareCache(): Promise<SharePayload | null> {
   if (typeof caches === "undefined") return null;
   try {
     const cache = await caches.open(SHARE_CACHE);
-    const key = new URL(SHARE_PATH, window.location.origin).href;
+    const key = new URL(`${deployedBase()}${SHARE_PATH}`, window.location.origin).href;
     const response = await cache.match(key);
     if (!response) return null;
     await cache.delete(key);

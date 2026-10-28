@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { TYPE_BOOT } from "@/lib/tl/storage";
 import { BUILD_ID } from "@/lib/tl/pwa";
-import { previewPathPrefix } from "@/lib/preview-path-prefix";
+import { previewPathPrefix, deployedBase } from "@/lib/preview-path-prefix";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "TLNotes";
@@ -32,6 +32,8 @@ export const Route = createRootRoute({
     const host = publicShareHost();
     const prefix =
       typeof window === "undefined" ? "" : (previewPathPrefix(window.location.hostname, window.location.pathname) ?? "");
+    const root = `${prefix}${deployedBase()}`;
+    const pub = (path: string) => `${root}${path}`;
     const xBanner = host ? `https://${host}/x-banner.jpg` : "";
     return {
     meta: [
@@ -49,10 +51,10 @@ export const Route = createRootRoute({
       ...(xBanner ? [{ property: "x:game:image", content: xBanner }] : []),
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/svg+xml", href: pub("/favicon.svg") },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: `${prefix}/manifest.webmanifest` },
-      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
+      { rel: "manifest", href: `${root}/manifest.webmanifest` },
+      { rel: "apple-touch-icon", href: pub("/icons/apple-touch-icon.png") },
     ],
     };
   },

@@ -54,6 +54,8 @@ That has to be built on a Mac, in Xcode. A build that only checks that the proje
 
 `.github/workflows/native.yml` runs when you start it by hand, or when you push a tag such as `v0.4.0-beta`.
 
+`.github/workflows/pages.yml` publishes the static site to GitHub Pages on every push to `main`. The address is [https://tpqwz.github.io/tlnotes/](https://tpqwz.github.io/tlnotes/). That copy is built with its files under `/tlnotes/`. A surge or Capacitor build stays at `/`.
+
 - The Android job produces a debug `.apk` and keeps it as an artifact. It is installable. It is not a Play Store package.
 - The iOS job creates the Xcode project if it is missing and compiles it for the simulator without signing. It does not produce an `.ipa` you can tap to install.
 

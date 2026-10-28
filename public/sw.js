@@ -1,5 +1,5 @@
 const CACHE = "tlnotes-share";
-const SHELL = "tlnotes-shell-v4";
+const SHELL = "tlnotes-shell-v5";
 const KEY = "/__tlnotes/share-payload";
 const FONTS = [
   "/fonts/monaspace-argon.woff2",
@@ -13,7 +13,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(SHELL)
-      .then((cache) => cache.addAll(FONTS))
+      .then((cache) => cache.addAll(FONTS.map((path) => `${mountPath()}${path}`)))
       .catch(() => undefined),
   );
 });
@@ -67,11 +67,26 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(route(event, path));
 });
 
+function mountPath() {
+  try {
+    return new URL(self.registration.scope).pathname.replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+}
+
 function splitPrefix(pathname) {
   const match = /^\/hds-[a-z0-9]+-\d+-[a-z0-9]+(?=\/|$)/i.exec(pathname);
-  if (!match) return { prefix: "", path: pathname };
-  const rest = pathname.slice(match[0].length);
-  return { prefix: match[0], path: rest.startsWith("/") ? rest : `/${rest}` };
+  if (match) {
+    const rest = pathname.slice(match[0].length);
+    return { prefix: match[0], path: rest.startsWith("/") ? rest : `/${rest}` };
+  }
+  const mount = mountPath();
+  if (mount && (pathname === mount || pathname.startsWith(`${mount}/`))) {
+    const rest = pathname.slice(mount.length);
+    return { prefix: mount, path: rest.startsWith("/") ? rest : `/${rest}` };
+  }
+  return { prefix: "", path: pathname };
 }
 
 async function isNested(event) {
@@ -192,7 +207,7 @@ async function storeAndOpen(request, prefix) {
   };
   const cache = await caches.open(CACHE);
   await cache.put(
-    new URL(KEY, self.location.origin).href,
+    new URL(`${mountPath()}${KEY}`, self.location.origin).href,
     new Response(JSON.stringify(payload), {
       headers: { "content-type": "application/json" },
     }),

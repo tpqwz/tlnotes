@@ -1,4 +1,4 @@
-import { previewPathPrefix } from "@/lib/preview-path-prefix";
+import { previewPathPrefix, deployedBase } from "@/lib/preview-path-prefix";
 import { toast } from "sonner";
 
 export const BUILD_ID = "0";
@@ -117,7 +117,8 @@ function within(ms: number) {
 }
 
 async function publishedStamp() {
-  const prefix = previewPathPrefix(window.location.hostname, window.location.pathname) ?? "";
+  const preview = previewPathPrefix(window.location.hostname, window.location.pathname) ?? "";
+  const prefix = `${preview}${deployedBase()}`;
   const probes = [`${prefix}/__tlnotes/stamp`, `${prefix}/__tlnotes/build`, `${prefix}/`];
   for (const probe of probes) {
     const limit = within(8000);
@@ -175,8 +176,8 @@ export async function promptInstall() {
 }
 
 function workerScript() {
-  const prefix = previewPathPrefix(window.location.hostname, window.location.pathname) ?? "";
-  return `${prefix}/sw.js`;
+  const preview = previewPathPrefix(window.location.hostname, window.location.pathname) ?? "";
+  return `${preview}${deployedBase()}/sw.js`;
 }
 
 function holdDevPage() {

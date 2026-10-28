@@ -14,6 +14,14 @@ const PATH_BASED_PREVIEW_HOSTS = new Set([
 
 const PORT_ID_PREFIX = /^\/hds-[a-z0-9]+-\d+-[a-z0-9]+(?=\/|$)/i;
 
+/** Vite `base` without a trailing slash. Empty when the site is served from `/`. */
+export function deployedBase(): string {
+  const env = (import.meta as { env?: { BASE_URL?: string } }).env;
+  const base = env?.BASE_URL ?? "/";
+  if (base === "/" || base === "") return "";
+  return base.endsWith("/") ? base.slice(0, -1) : base;
+}
+
 export function previewPathPrefix(hostname: string, pathname: string): string | undefined {
   if (!PATH_BASED_PREVIEW_HOSTS.has(hostname.toLowerCase())) return undefined;
   return PORT_ID_PREFIX.exec(pathname)?.[0];

@@ -14,4 +14,6 @@ const html = Buffer.from(raw)
   .replaceAll(/\/assets\/styles-[A-Za-z0-9_-]+\.css/g, `/assets/${css}`);
 writeFileSync(join(root, "index.html"), html);
 writeFileSync(join(root, "200.html"), html);
+writeFileSync(join(root, "404.html"), html);
+writeFileSync(join(root, ".nojekyll"), "");
 console.log(`static host folder: dist/client (stylesheet ${css})`);
