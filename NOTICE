@@ -1,0 +1,45 @@
+TLNotes 0.4.0-beta
+Copyright (c) 2026 Dysig Ignoramus
+
+The MIT license in LICENSE covers the TLNotes application: the timeline,
+its Android shell, and the notes written for this project.
+
+Other work is included under its own terms and is not relicensed here.
+
+Monaspace
+  Argon, Neon, Xenon, Radon, and Krypton are Copyright (c) 2023 GitHub,
+  https://github.com/githubnext/monaspace, under the SIL Open Font
+  License 1.1. The license text is public/fonts/OFL.txt.
+  "Monaspace", "Argon", "Neon", "Xenon", "Radon", and "Krypton" are
+  Reserved Font Names.
+
+Other faces
+  These are also under the SIL Open Font License 1.1, the same terms
+  as public/fonts/OFL.txt, and are not relicensed here.
+  Fraunces (Ledger) is Copyright 2018 The Fraunces Project Authors.
+  Source Sans 3 (Sans) is Copyright 2020 Adobe.
+  IBM Plex Mono (Plex) is Copyright 2017 IBM Corp.
+  Atkinson Hyperlegible Mono (Atkinson) is Copyright 2024 The Atkinson
+  Hyperlegible Mono Project Authors, a project of the Braille Institute.
+  Josefin Sans is Copyright 2010 The Josefin Sans Project Authors.
+
+Dependencies
+  Packages installed from npm keep the licenses in their own packages.
+  That includes Capacitor (Ionic), TanStack, React, sql.js, PGlite,
+  Better Auth, Radix, Lucide, and Tailwind. They are not vendored in
+  this tree.
+
+Grok app builder
+  The platform files that serve install metadata and the preview shell
+  (scripts/grok-pwa-*, server/middleware/grok-pwa.ts, and public/__grok)
+  come from the Grok app builder. They stay under whatever terms that
+  scaffold uses. This NOTICE does not relicense them.
+
+Names of older interfaces
+  Theme names such as Turbo Vision, IRIX, CDE, Motif, and Mac identify
+  a look. Those names belong to their owners. No artwork or code from
+  those systems is included.
+
+Quotations
+  Sample sayings are quotations of older works. The selection is part of
+  the sample journal. The words of those works are not claimed here.
