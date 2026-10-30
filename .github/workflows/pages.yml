@@ -15,10 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  site:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +27,58 @@ jobs:
       - run: npm run build:static
         env:
           TLNOTES_BASE: /tlnotes/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist/client
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm run android:sync
+      - run: chmod +x android/gradlew && android/gradlew -p android assembleDebug
+      - run: |
+          stamp=$(tr -d '[:space:]' < dist/client/__tlnotes/build)
+          mkdir -p android-out
+          cp android/app/build/outputs/apk/debug/app-debug.apk android-out/tlnotes.apk
+          printf '%s\n' "{\"build\":\"$stamp\",\"apk\":\"tlnotes.apk\"}" > android-out/android.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android-out
+
+  deploy:
+    needs: [site, android]
+    if: always() && needs.site.result == 'success' && needs.android.result != 'cancelled'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: out
+      - uses: actions/download-artifact@v4
+        if: needs.android.result == 'success'
+        with:
+          name: android-apk
+          path: android-apk
+      - if: needs.android.result == 'success'
+        run: cp android-apk/tlnotes.apk android-apk/android.json out/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/client
+          path: out
       - id: deployment
         uses: actions/deploy-pages@v4

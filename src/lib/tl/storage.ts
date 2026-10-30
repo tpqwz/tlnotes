@@ -194,6 +194,8 @@ export type Settings = {
   linkPreviews: boolean;
   /** Return adds the note. When false, Shift+Return adds it and Return starts a new line. */
   enterSends: boolean;
+  /** On Android, look at the website for a newer package. Off leaves this package as it is. */
+  pagePackage: boolean;
 };
 
 export type Persisted = {
@@ -221,6 +223,7 @@ export const defaultSettings = (): Settings => ({
   shareEdit: true,
   linkPreviews: true,
   enterSends: false,
+  pagePackage: false,
 });
 
 const LEGACY_LOOK: Record<string, [Theme, Scheme]> = {
@@ -316,6 +319,7 @@ export function normalizeSettings(settings: Partial<Settings> | null | undefined
     shareEdit: settings?.shareEdit !== false,
     linkPreviews: settings?.linkPreviews !== false,
     enterSends: settings?.enterSends === true,
+    pagePackage: settings?.pagePackage === true,
   };
 }
 
@@ -345,6 +349,7 @@ export function chooseSettings(stored: Partial<Settings> | null | undefined, loc
     shareEdit: saved.shareEdit === base.shareEdit ? mirror.shareEdit : saved.shareEdit,
     linkPreviews: saved.linkPreviews === base.linkPreviews ? mirror.linkPreviews : saved.linkPreviews,
     enterSends: saved.enterSends === base.enterSends ? mirror.enterSends : saved.enterSends,
+    pagePackage: saved.pagePackage === base.pagePackage ? mirror.pagePackage : saved.pagePackage,
   };
 }
 

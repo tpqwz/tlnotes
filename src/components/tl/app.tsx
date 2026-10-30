@@ -43,7 +43,7 @@ import {
 import { UnlockScreen } from "@/components/tl/vault";
 import { startPwa } from "@/lib/tl/pwa";
 import { Timeline } from "@/components/tl/timeline";
-import { ConfirmDialog, EditorDialog, FilterDialog, JumpDialog } from "@/components/tl/dialogs";
+import { ConfirmDialog, EditorDialog, FilterDialog, HazardNotice, JumpDialog } from "@/components/tl/dialogs";
 import { SettingsView, SyncDoor } from "@/components/tl/settings";
 import { TrashView } from "@/components/tl/trash";
 import { TaskList, type TaskSort } from "@/components/tl/tasks";
@@ -89,6 +89,8 @@ export function TimelineApp() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [hazard, setHazard] = useState(true);
+  const [hazardLost, setHazardLost] = useState(false);
   const [flashId, setFlashId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -230,7 +232,8 @@ export function TimelineApp() {
       }
       const loaded = opened.data;
       if (opened.missing) {
-        toast.error(t("The journal on this device did not open. Restore a backup before adding notes. Nothing new will replace what was stored."));
+        setHazardLost(true);
+        setHazard(true);
       } else if (!opened.hadStore && loaded.notes.length === 0 && loaded.trash.length === 0) {
         loaded.notes = sampleNotes(Date.now()).filter((note) => !isPageType(note.type));
         savePersisted(loaded, true);
@@ -1309,6 +1312,12 @@ export function TimelineApp() {
                 shareEdit={data.settings.shareEdit}
                 linkPreviews={data.settings.linkPreviews}
                 enterSends={data.settings.enterSends}
+                pagePackage={data.settings.pagePackage}
+                onPagePackage={(pagePackage) => {
+                  const current = dataRef.current;
+                  if (!current) return;
+                  commit({ ...current, settings: { ...current.settings, pagePackage } });
+                }}
                 onLinkPreviews={(linkPreviews) => {
                   const current = dataRef.current;
                   if (!current) return;
@@ -1685,6 +1694,7 @@ export function TimelineApp() {
       />
       <JumpDialog open={jumpOpen} place={place} index={jumpIndex} onClose={() => setJumpOpen(false)} onJump={jumpTo} />
       <ConfirmDialog state={confirm} onCancel={() => setConfirm(null)} />
+      <HazardNotice open={hazard} lost={hazardLost} onAck={() => setHazard(false)} />
     </div>
   );
 }

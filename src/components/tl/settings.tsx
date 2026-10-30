@@ -8,7 +8,8 @@ import { chooseModel, embedStatus, subscribeEmbed, type EmbedStatus, type Search
 import { SealSection } from "@/components/tl/vault";
 import { applyUpdate, checkForUpdate, getPwaSnapshot, promptInstall, subscribePwa } from "@/lib/tl/pwa";
 import { chooseSyncFile, forgetSyncFile, subscribeSync, syncSnapshot } from "@/lib/tl/sync";
-import { nativeApp, nativeSync } from "@/lib/tl/native-sync";
+import { nativeAndroid, nativeApp, nativeSync } from "@/lib/tl/native-sync";
+import { checkPagePackage } from "@/lib/tl/android-update";
 import { btnGhost, btnInk, btnPrimary, btnSurface, InfoButton } from "@/components/tl/ui";
 
 export function SettingsView({
@@ -45,6 +46,8 @@ export function SettingsView({
   onLinkPreviews,
   enterSends,
   onEnterSends,
+  pagePackage,
+  onPagePackage,
   onSample,
   sealed,
   passkey,
@@ -89,6 +92,8 @@ export function SettingsView({
   onLinkPreviews: (linkPreviews: boolean) => void;
   enterSends: boolean;
   onEnterSends: (enterSends: boolean) => void;
+  pagePackage: boolean;
+  onPagePackage: (pagePackage: boolean) => void;
   onSample: () => void;
   sealed: boolean;
   passkey: boolean;
@@ -105,6 +110,9 @@ export function SettingsView({
   const embed = useSyncExternalStore(subscribeEmbed, embedStatus, embedStatus);
   const showSync = nativeSync();
   const showShare = nativeApp();
+  const android = nativeAndroid();
+  const [pageApk, setPageApk] = useState<"idle" | "checking" | "newer" | "current" | "unconfirmed">("idle");
+  const [pageUrl, setPageUrl] = useState("");
   const sections = CONTENTS.filter((item) => (item.id !== "settings-sync" || showSync) && (item.id !== "settings-sharing" || showShare));
   const bytes = new Blob([JSON.stringify({ notes, trash })]).size;
   const pictures = pictureStats([...notes, ...trash]);
@@ -126,7 +134,7 @@ export function SettingsView({
       <Section
         id="settings-data"
         title="Data"
-        about="JSON is a full backup, including the trash and any picture kept on a page. The SQLite graph is rebuilt from these notes whenever it is asked a question. It is not a second copy, and export does not save it. A calendar file is the iCalendar standard: events, dated tasks, and periods."
+        about="JSON is a full backup, including the trash and any picture kept with a note. A calendar file is the iCalendar standard: events, dated tasks, and periods."
       >
         <div className="flex flex-wrap gap-2">
           <button type="button" className={btnPrimary} onClick={onExport}>
@@ -191,6 +199,54 @@ export function SettingsView({
             )
           )}
         </div>
+        {android ? (
+          <div className="mt-3 flex flex-col gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-pressed={pagePackage}
+                className={pagePackage ? `${btnPrimary} justify-center px-2` : `${btnSurface} justify-center px-2`}
+                onClick={() => {
+                  if (!pagePackage) onPagePackage(true);
+                }}
+              >
+                {t("Website package")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={!pagePackage}
+                className={!pagePackage ? `${btnPrimary} justify-center px-2` : `${btnSurface} justify-center px-2`}
+                onClick={() => {
+                  if (pagePackage) onPagePackage(false);
+                }}
+              >
+                {t("This package only")}
+              </button>
+              {pagePackage ? (
+                <button
+                  type="button"
+                  className={btnSurface}
+                  disabled={pageApk === "checking"}
+                  onClick={() => {
+                    setPageApk("checking");
+                    void checkPagePackage().then((result) => {
+                      setPageApk(result.state);
+                      setPageUrl(result.url);
+                    });
+                  }}
+                >
+                  {t("Check the website")}
+                </button>
+              ) : null}
+              {pagePackage && pageApk === "newer" && pageUrl ? (
+                <a className={btnPrimary} href={pageUrl} target="_blank" rel="noreferrer">
+                  {t("Download the Android update")}
+                </a>
+              ) : null}
+            </div>
+            {pagePackage ? <p className="text-sm text-pretty text-muted">{pagePackageStatus(pageApk)}</p> : null}
+          </div>
+        ) : null}
       </Section>
 
       {showShare ? (
@@ -595,6 +651,14 @@ function pictureStats(notes: Note[]) {
     }
   }
   return { count, bytes };
+}
+
+function pagePackageStatus(state: "idle" | "checking" | "newer" | "current" | "unconfirmed") {
+  if (state === "checking") return t("Checking the published package.");
+  if (state === "newer") return t("A newer Android package is on the website. Download it, then install it. Export from Data first if you want a copy.");
+  if (state === "current") return t("This package matches the one on the website.");
+  if (state === "unconfirmed") return t("The website package could not be read. Nothing was downloaded.");
+  return t("When this is on, a check can see the Android package published with the website. Nothing downloads until you ask.");
 }
 
 function appStatus(pwa: ReturnType<typeof getPwaSnapshot>) {
