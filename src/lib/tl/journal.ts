@@ -37,6 +37,14 @@ export function combineJournals(local: Note[], remote: Note[], removed: Record<s
   return { notes, changed: merged.changed || notes.length !== local.length };
 }
 
+/** A save may add and remove notes. It may not replace a stored journal with an unrelated one. */
+export function journalWriteIsSafe(storedIds: string[], nextIds: string[], replace: boolean) {
+  if (replace || storedIds.length === 0) return true;
+  if (nextIds.length === 0) return false;
+  const stored = new Set(storedIds);
+  return nextIds.some((id) => stored.has(id));
+}
+
 export function canonicalNotes(notes: Note[], trash: Note[]) {
   const live = notes.map((note) => {
     if (note.trashedAt == null) return note;

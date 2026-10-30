@@ -227,19 +227,20 @@ export function EditorDialog({
         });
       if (languages.length > 0) next.languages = languages;
       else delete next.languages;
+      delete next.labels;
+      delete next.description;
+      delete next.designation;
+      delete next.statements;
+      delete next.book;
     } else {
       delete next.sources;
       delete next.originalLanguage;
       delete next.languages;
     }
-    if (isPageType(draft.type) || draft.type === "quotation") {
-      if (draft.type === "quotation") {
-        next.labels = [{ text: next.content.trim(), language: draft.originalLanguage.trim() }];
-      } else {
-        const labels = draft.labels.map((label) => ({ text: label.text.trim(), language: label.language.trim() })).filter((label) => label.text);
-        if (labels.length > 0) next.labels = labels;
-        else delete next.labels;
-      }
+    if (isPageType(draft.type)) {
+      const labels = draft.labels.map((label) => ({ text: label.text.trim(), language: label.language.trim() })).filter((label) => label.text);
+      if (labels.length > 0) next.labels = labels;
+      else delete next.labels;
       const description = draft.description.trim();
       if (description) next.description = description;
       else delete next.description;
@@ -403,33 +404,7 @@ export function EditorDialog({
         )}
 
         {form.type === "quotation" && (
-          <p className="text-sm text-pretty text-muted">{t("The words in their original language are the title of the saying.")}</p>
-        )}
-
-        {(form.type === "page" || form.type === "quotation" || form.type === "headword" || form.type === "persona") && (
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
-            {t("Designation")}
-            <select
-              className="field"
-              value={form.designation}
-              onChange={(event) => patch({ designation: event.target.value })}
-            >
-              <option value="">{t("None")}</option>
-              {DESIGNATIONS.map((item) => (
-                <option key={item} value={item}>
-                  {t(item)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        {form.type === "quotation" && (
           <div className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
-              {t("Picture")}
-              <input className="field" placeholder={t("A small picture address")} value={form.image} onChange={(event) => patch({ image: event.target.value })} />
-            </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
               {t("Original language")}
               <input
@@ -523,14 +498,24 @@ export function EditorDialog({
               className="self-start text-sm font-semibold text-primary"
               onClick={() => patch({ sources: [...form.sources, blankSource()] })}
             >
-              {form.sources.length === 0 ? t("Add a source") : t("Add another appearance")}
+              {form.sources.length === 0 ? t("Add a source") : t("Add another source")}
             </button>
-            <StatementFields statements={form.statements} onChange={(statements) => patch({ statements })} />
           </div>
         )}
 
         {(form.type === "page" || form.type === "headword" || form.type === "persona" || form.type === "book") && (
           <div className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
+              {t("Designation")}
+              <select className="field" value={form.designation} onChange={(event) => patch({ designation: event.target.value })}>
+                <option value="">{t("None")}</option>
+                {DESIGNATIONS.map((item) => (
+                  <option key={item} value={item}>
+                    {t(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
             <p className="text-sm text-pretty text-muted">
               {form.type === "headword"
                 ? t("The first title is the headword. Another title may be another form, or the same word in another language.")
@@ -953,7 +938,7 @@ const TYPE_HINT: Record<string, string> = {
   link: "A title and an address.",
   image: "A picture. Words are optional.",
   video: "A clip. Words are optional. The length kept is the start, up to twenty seconds.",
-  quotation: "The words, and where they have appeared.",
+  quotation: "The words, the language, and a source if you have one.",
   page: "A MyST page. Titles are its names, and links are its relations.",
   headword: "One word in the lexicon. The title is the headword.",
   persona: "A person in the repertorium. Not a timeline note.",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { combineJournals, journalFingerprint, laterNote, mergeNotes } from "./journal.ts";
+import { combineJournals, journalFingerprint, journalWriteIsSafe, laterNote, mergeNotes } from "./journal.ts";
 import type { Note } from "@/lib/tl/model";
 
 function note(id: string, edited: number, extra?: Partial<Note>): Note {
@@ -51,5 +51,18 @@ describe("mergeNotes", () => {
     const ids = combined.notes.map((item) => item.id).sort();
     assert.deepEqual(ids, ["back", "only-there"]);
     assert.equal(combined.notes.find((item) => item.id === "back")?.content, "later");
+  });
+});
+
+describe("journalWriteIsSafe", () => {
+  it("allows a normal edit and a deliberate replace", () => {
+    assert.equal(journalWriteIsSafe(["a", "b"], ["a", "c"], false), true);
+    assert.equal(journalWriteIsSafe(["a"], [], true), true);
+    assert.equal(journalWriteIsSafe([], ["new"], false), true);
+  });
+
+  it("refuses an empty or unrelated journal over a stored one", () => {
+    assert.equal(journalWriteIsSafe(["a", "b"], [], false), false);
+    assert.equal(journalWriteIsSafe(["a", "b"], ["new-task"], false), false);
   });
 });

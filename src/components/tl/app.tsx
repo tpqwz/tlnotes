@@ -229,7 +229,9 @@ export function TimelineApp() {
         return;
       }
       const loaded = opened.data;
-      if (!opened.hadStore && loaded.notes.length === 0 && loaded.trash.length === 0) {
+      if (opened.missing) {
+        toast.error(t("The journal on this device did not open. Restore a backup before adding notes. Nothing new will replace what was stored."));
+      } else if (!opened.hadStore && loaded.notes.length === 0 && loaded.trash.length === 0) {
         loaded.notes = sampleNotes(Date.now()).filter((note) => !isPageType(note.type));
         savePersisted(loaded, true);
       } else if (loaded.notes.some((note) => note.id === "sample-college")) {
@@ -472,17 +474,17 @@ export function TimelineApp() {
     else history.pushState(next, "");
   }
 
-  function commit(next: Persisted, quiet = false) {
+  function commit(next: Persisted, quiet = false, replace = false) {
     applyType(next.settings);
     dataRef.current = next;
     setData(next);
-    savePersisted(next, quiet);
+    savePersisted(next, quiet, replace);
   }
 
-  function patch(partial: Partial<Persisted>, quiet = false) {
+  function patch(partial: Partial<Persisted>, quiet = false, replace = false) {
     const current = dataRef.current;
     if (!current) return;
-    commit({ ...current, ...partial }, quiet);
+    commit({ ...current, ...partial }, quiet, replace);
   }
 
   function rememberScroll(top: number) {
@@ -869,7 +871,7 @@ export function TimelineApp() {
       confirmLabel: t("Clear all"),
       onConfirm: () => {
         if (!dataRef.current) return;
-        patch({ notes: [], trash: [] });
+        patch({ notes: [], trash: [] }, false, true);
         setConfirm(null);
         setView("timeline");
         toast.success(t("All notes cleared"));
@@ -979,7 +981,7 @@ export function TimelineApp() {
         confirmLabel: t("Import"),
         onConfirm: () => {
           if (!dataRef.current) return;
-          patch({ notes: parsed.notes, trash: parsed.trash });
+          patch({ notes: parsed.notes, trash: parsed.trash }, false, true);
           setConfirm(null);
           setFilters(defaultFilters());
           rememberScroll(0);

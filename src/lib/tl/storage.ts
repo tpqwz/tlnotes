@@ -8,6 +8,7 @@ import { rememberJournal } from "@/lib/tl/sync";
 import { NativeSync, nativeAndroid } from "@/lib/tl/native-sync";
 
 const KEY = "tlnotes.v1";
+const CENSUS = "tlnotes.census";
 
 export type Toolbar = "float" | "strip";
 export type Face = "argon" | "neon" | "xenon" | "radon" | "krypton" | "ledger" | "sans" | "plex" | "atkinson" | "josefin";
@@ -367,6 +368,31 @@ function emptyStore(): Persisted {
   return { notes: [], trash: [], settings: defaultSettings() };
 }
 
+function readCensus() {
+  try {
+    const raw = localStorage.getItem(CENSUS);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as { n?: number };
+    return typeof parsed.n === "number" && parsed.n > 0 ? parsed.n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function markCensus(count: number) {
+  try {
+    localStorage.setItem(CENSUS, JSON.stringify({ n: count, at: Date.now() }));
+  } catch {
+    /* the mark is a guard, not the journal */
+  }
+}
+
+function askToKeep() {
+  const storage = navigator.storage;
+  if (!storage?.persist) return;
+  void storage.persist().catch(() => undefined);
+}
+
 function readLocal(): Persisted | null {
   try {
     const raw = localStorage.getItem(KEY);
@@ -417,6 +443,7 @@ let queued: Persisted | null = null;
 let warned = false;
 let blocked = false;
 let loud = false;
+let replaceNext = false;
 let report = (_message: string) => {};
 
 export function onPersistError(fn: (message: string) => void) {
@@ -431,15 +458,18 @@ function storageFull(error: unknown) {
   return /quota/i.test(message);
 }
 
+function explain(error: unknown) {
+  const message = error && typeof error === "object" && "message" in error ? String(error.message) : "";
+  if (message.startsWith("The open journal")) return message;
+  if (storageFull(error)) return "This device is full. Export a backup before the latest change is lost.";
+  return "The latest change is on screen, but it is not stored yet.";
+}
+
 function tell(error: unknown) {
   blocked = true;
   if (warned || !loud) return;
   warned = true;
-  report(
-    storageFull(error)
-      ? "This device is full. Export a backup before the latest change is lost."
-      : "The latest change is on screen, but it is not stored yet.",
-  );
+  report(explain(error));
 }
 
 export function persistHealthy() {
@@ -454,18 +484,23 @@ async function flush() {
   const data = queued;
   if (!data || backend !== "idb") return;
   queued = null;
+  const replacing = replaceNext;
+  replaceNext = false;
   const body = journalFingerprint(canonicalNotes(data.notes, data.trash));
   const notesChanged = body !== savedBody;
   try {
     const key = sessionKey();
     if (isVaultOn()) {
       if (!key) await writeSettings(data.settings);
-      else if (notesChanged) removed = await writeRecords(await sealAll(data.notes, data.trash, key), data.settings, removed);
+      else if (notesChanged) removed = await writeRecords(await sealAll(data.notes, data.trash, key), data.settings, removed, true, replacing);
       else await writeSettings(data.settings);
-    } else if (notesChanged) removed = await writeJournal(data.notes, data.trash, data.settings, removed);
+    } else if (notesChanged) removed = await writeJournal(data.notes, data.trash, data.settings, removed, true, replacing);
     else await writeSettings(data.settings);
     savedBody = body;
-    if (notesChanged) rememberJournal(data.notes, data.trash, removed);
+    if (notesChanged) {
+      markCensus(data.notes.length + data.trash.length);
+      rememberJournal(data.notes, data.trash, removed);
+    }
     warned = false;
     blocked = false;
     loud = false;
@@ -483,10 +518,12 @@ export function whenSaved() {
   return chain.then(() => undefined);
 }
 
-export function savePersisted(data: Persisted, quiet = false) {
+export function savePersisted(data: Persisted, quiet = false, replace = false) {
   const next = { ...data, settings: { ...data.settings, revised: Date.now() } };
   if (!quiet) loud = true;
+  if (replace) replaceNext = true;
   if (backend !== "idb") {
+    replaceNext = false;
     try {
       localStorage.setItem(KEY, JSON.stringify(next));
       warned = false;
@@ -514,12 +551,13 @@ function fromRecord(record: JournalRecord, fallback: Settings): Persisted {
   };
 }
 
-export async function openJournal(): Promise<{ data: Persisted; hadStore: boolean; locked: boolean }> {
+export async function openJournal(): Promise<{ data: Persisted; hadStore: boolean; locked: boolean; missing: boolean }> {
   const hadLocal =
     localStorage.getItem(KEY) != null ||
     localStorage.getItem("tlnotes") != null ||
     localStorage.getItem("tlnotes-trash") != null;
   const local = readLocal();
+  const census = readCensus();
   try {
     const record = await readJournal();
     if (record.vault && record.sealed.length === 0 && (record.notes.length > 0 || record.trash.length > 0)) {
@@ -527,19 +565,40 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
       record.vault = null;
     }
     noteVault(record.vault);
-    if (!record.ready) {
+    const idbCount = record.notes.length + record.trash.length + record.sealed.length;
+    if (!record.ready && idbCount === 0) {
+      if (census > 0 && !(local && (local.notes.length > 0 || local.trash.length > 0))) {
+        backend = "idb";
+        return {
+          data: { notes: [], trash: [], settings: chooseSettings(record.settings, local?.settings) },
+          hadStore: true,
+          locked: false,
+          missing: true,
+        };
+      }
       const source = local ?? emptyStore();
       removed = {};
       await writeJournal(source.notes, source.trash, source.settings, {}, false);
       if (!(await journalMatches(source.notes, source.trash))) {
         backend = "local";
-        return { data: source, hadStore: hadLocal, locked: false };
+        return { data: source, hadStore: hadLocal, locked: false, missing: false };
       }
       await writeJournal(source.notes, source.trash, source.settings, {}, true);
       keepSettingsLocal(source.settings);
       backend = "idb";
       rememberBody(source.notes, source.trash);
-      return { data: source, hadStore: hadLocal || source.notes.length > 0 || source.trash.length > 0, locked: false };
+      markCensus(source.notes.length + source.trash.length);
+      askToKeep();
+      return { data: source, hadStore: hadLocal || source.notes.length > 0 || source.trash.length > 0, locked: false, missing: false };
+    }
+    if (record.ready && idbCount === 0 && census > 0 && !(local && (local.notes.length > 0 || local.trash.length > 0))) {
+      backend = "idb";
+      return {
+        data: { notes: [], trash: [], settings: chooseSettings(record.settings, local?.settings) },
+        hadStore: true,
+        locked: false,
+        missing: true,
+      };
     }
     if (record.vault) {
       removed = record.removed;
@@ -552,10 +611,13 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
           const parsed = parseImport({ notes: opened, trash: [] }) ?? { notes: [], trash: [] };
           const data = { notes: parsed.notes, trash: parsed.trash, settings };
           rememberBody(data.notes, data.trash);
-          return { data, hadStore: true, locked: false };
+          markCensus(data.notes.length + data.trash.length);
+          askToKeep();
+          return { data, hadStore: true, locked: false, missing: false };
         }
       }
-      return { data: { notes: [], trash: [], settings }, hadStore: true, locked: true };
+      markCensus(record.sealed.length);
+      return { data: { notes: [], trash: [], settings }, hadStore: true, locked: true, missing: false };
     }
     removed = record.removed;
     const settings = chooseSettings(record.settings, local?.settings);
@@ -578,11 +640,15 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
     keepSettingsLocal(settings);
     backend = "idb";
     rememberBody(data.notes, data.trash);
-    return { data, hadStore: true, locked: false };
+    markCensus(data.notes.length + data.trash.length);
+    askToKeep();
+    return { data, hadStore: true, locked: false, missing: false };
   } catch {
     backend = "local";
     noteVault(null);
-    return { data: local ?? emptyStore(), hadStore: hadLocal, locked: false };
+    const data = local ?? emptyStore();
+    const missing = census > 0 && data.notes.length === 0 && data.trash.length === 0;
+    return { data, hadStore: hadLocal || missing, locked: false, missing };
   }
 }
 

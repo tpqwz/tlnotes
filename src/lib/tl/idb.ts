@@ -1,5 +1,5 @@
 import { parseImport, type Note } from "@/lib/tl/model";
-import { canonicalNotes, journalFingerprint } from "@/lib/tl/journal";
+import { canonicalNotes, journalFingerprint, journalWriteIsSafe } from "@/lib/tl/journal";
 import type { Settings } from "@/lib/tl/storage";
 
 const DB_NAME = "tlnotes";
@@ -41,7 +41,7 @@ let opening: Promise<IDBDatabase> | null = null;
 export function openJournalDb() {
   if (typeof indexedDB === "undefined") return Promise.reject(new Error("IndexedDB is unavailable"));
   opening ??= new Promise<IDBDatabase>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("IndexedDB did not open")), 4000);
+    const timer = setTimeout(() => reject(new Error("IndexedDB did not open")), 15000);
     let asked: IDBOpenDBRequest;
     try {
       asked = indexedDB.open(DB_NAME, DB_VERSION);
@@ -146,6 +146,7 @@ export async function writeRecords(
   settings: Settings,
   previousRemoved: Removed,
   ready = true,
+  replace = false,
 ) {
   const db = await openJournalDb();
   const removed: Removed = { ...previousRemoved };
@@ -154,9 +155,11 @@ export async function writeRecords(
     const meta = tx.objectStore("meta");
     const stored = (await request(notesStore.getAll())) as { id: string }[];
     const prior = new Map(stored.map((item) => [item.id, JSON.stringify(item)]));
-    const keep = new Set<string>();
+    const keep = new Set(records.map((record) => record.id));
+    if (!journalWriteIsSafe([...prior.keys()], [...keep], replace)) {
+      throw new Error("The open journal does not match the stored one, so this change was not written.");
+    }
     for (const record of records) {
-      keep.add(record.id);
       delete removed[record.id];
       if (prior.get(record.id) === JSON.stringify(record)) continue;
       await request(notesStore.put(record));
@@ -174,14 +177,21 @@ export async function writeRecords(
   return removed;
 }
 
-export async function writeJournal(notes: Note[], trash: Note[], settings: Settings, previousRemoved: Removed, ready = true) {
+export async function writeJournal(
+  notes: Note[],
+  trash: Note[],
+  settings: Settings,
+  previousRemoved: Removed,
+  ready = true,
+  replace = false,
+) {
   const records = [...notes.map((note) => storedNote(note, false)), ...trash.map((note) => storedNote(note, true))];
   try {
-    return await writeRecords(records, settings, previousRemoved, ready);
+    return await writeRecords(records, settings, previousRemoved, ready, replace);
   } catch (error) {
     if (!storageFull(error)) throw error;
     await dropSearchCache();
-    return writeRecords(records, settings, previousRemoved, ready);
+    return writeRecords(records, settings, previousRemoved, ready, replace);
   }
 }
 
