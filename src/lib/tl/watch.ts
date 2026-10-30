@@ -1,6 +1,7 @@
 import { CapacitorHttp } from "@capacitor/core";
 import type { MediaFacts } from "@/lib/tl/model";
 import { compressVideo, fetchMedia, mediaAddress } from "@/lib/tl/media";
+import { keepsFiles } from "@/lib/tl/native-sync";
 
 const BYTE_CAP = 8_000_000;
 const YT_KEY = "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w";
@@ -147,6 +148,7 @@ function mediumOpus(formats: Format[]) {
 }
 
 async function keepFile(format: Format | undefined, audio: boolean) {
+  if (!keepsFiles()) return "";
   const length = Number(format?.contentLength || 0);
   if (!format?.url || (length > BYTE_CAP)) return "";
   try {

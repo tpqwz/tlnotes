@@ -1,4 +1,5 @@
 import type { MediaFacts } from "@/lib/tl/model";
+import { keepsFiles } from "@/lib/tl/native-sync";
 
 const IMAGE_CAP = 280_000;
 const VIDEO_CAP = 1_200_000;
@@ -180,6 +181,7 @@ export async function fetchMedia(address: string): Promise<{ kind: "image" | "vi
   if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("That address is not a link.");
   const hinted = fileName(url, null);
   const kindHint = kindOfBlob("", hinted);
+  if (!keepsFiles()) return { kind: kindHint === "video" ? "video" : "image", data: url.href, facts: { name: hinted, url: url.href } };
   try {
     const response = await fetch(url.href);
     if (!response.ok) throw new Error("That address did not answer.");

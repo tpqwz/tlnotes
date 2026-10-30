@@ -1,5 +1,6 @@
 import { linkPreview, type LinkPreview, type Note } from "@/lib/tl/model";
 import { smallImage } from "@/lib/tl/small-image";
+import { keepsFiles } from "@/lib/tl/native-sync";
 
 const AGENT = "TLNotes/1.0 (personal repertorium; local pictures)";
 const tried = new Set<string>();
@@ -202,6 +203,7 @@ async function getJson(url: string) {
 
 export async function storeImage(url: string) {
   const small = smallImage(url);
+  if (!keepsFiles()) return small.startsWith("https://") && small.length < 4_000 ? small : "";
   const data = (await asData(small)) || (small !== url ? await asData(url) : "");
   if (data) return data;
   return small.startsWith("https://") && small.length < 4_000 ? small : "";

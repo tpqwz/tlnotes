@@ -17,6 +17,11 @@ export function nativeApp() {
   return cap?.isNativePlatform?.() === true;
 }
 
+/** Picture, video, and sound files are kept only in the installed app. A browser copy keeps the words and the address. */
+export function keepsFiles() {
+  return nativeApp();
+}
+
 /** Platforms whose shell can keep a file open. iOS and desktop join this when they have the same plugin. */
 const SYNC_PLATFORMS = new Set(["android", "ios"]);
 

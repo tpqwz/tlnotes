@@ -5,7 +5,7 @@ import { journalMatches, readJournal, writeJournal, writeRecords, writeSettings,
 import { isVaultOn, noteVault, openSealed, restoreSession, sealAll, sessionKey } from "@/lib/tl/vault";
 import { applyLanguage, cleanLanguageSetting } from "@/lib/tl/language";
 import { rememberJournal } from "@/lib/tl/sync";
-import { NativeSync, nativeAndroid } from "@/lib/tl/native-sync";
+import { NativeSync, keepsFiles, nativeAndroid } from "@/lib/tl/native-sync";
 
 const KEY = "tlnotes.v1";
 const CENSUS = "tlnotes.census";
@@ -422,6 +422,34 @@ export function loadPersisted(): Persisted {
   return readLocal() ?? emptyStore();
 }
 
+function dropStoredFile(note: Note): Note {
+  if (keepsFiles()) return note;
+  let copy = note;
+  if (note.image?.startsWith("data:")) {
+    copy = { ...copy };
+    delete copy.image;
+  }
+  if (note.video?.startsWith("data:")) {
+    if (copy === note) copy = { ...copy };
+    delete copy.video;
+  }
+  if (note.preview?.image?.startsWith("data:")) {
+    if (copy === note) copy = { ...copy };
+    const preview = { ...note.preview };
+    delete preview.image;
+    copy.preview = preview;
+  }
+  return copy;
+}
+
+function fitCopy(data: Persisted): Persisted {
+  if (keepsFiles()) return data;
+  const notes = data.notes.map(dropStoredFile);
+  const trash = data.trash.map(dropStoredFile);
+  if (notes.every((note, index) => note === data.notes[index]) && trash.every((note, index) => note === data.trash[index])) return data;
+  return { ...data, notes, trash };
+}
+
 function lightNotes(notes: Note[]): Note[] {
   return notes.map((note) => {
     let copy = note;
@@ -578,7 +606,7 @@ export function whenSaved() {
 }
 
 export function savePersisted(data: Persisted, quiet = false, replace = false) {
-  const next = { ...data, settings: { ...data.settings, revised: Date.now() } };
+  const next = fitCopy({ ...data, settings: { ...data.settings, revised: Date.now() } });
   if (!quiet) loud = true;
   if (replace) replaceNext = true;
   if (backend !== "idb") {
@@ -635,7 +663,7 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
           missing: true,
         };
       }
-      const source = local ?? emptyStore();
+      const source = fitCopy(local ?? emptyStore());
       removed = {};
       await writeJournal(source.notes, source.trash, source.settings, {}, false);
       if (!(await journalMatches(source.notes, source.trash))) {
@@ -698,6 +726,12 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
     }
     keepJournalLocal(data);
     backend = "idb";
+    const fitted = fitCopy(data);
+    if (fitted !== data) {
+      data = fitted;
+      removed = await writeJournal(data.notes, data.trash, data.settings, removed);
+      keepJournalLocal(data);
+    }
     rememberBody(data.notes, data.trash);
     markCensus(data.notes.length + data.trash.length);
     askToKeep();
@@ -724,6 +758,7 @@ export async function acceptUnlocked(opened: Note[], settings: Settings): Promis
     keepJournalLocal(data);
   }
   const key = sessionKey();
+  data = fitCopy(data);
   if (key) removed = await writeRecords(await sealAll(data.notes, data.trash, key), data.settings, removed);
   backend = "idb";
   rememberBody(data.notes, data.trash);

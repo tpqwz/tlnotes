@@ -36,6 +36,7 @@ import { formatUiDate } from "@/lib/tl/language";
 import { Modal, btnGhost, btnInk, btnPrimary, btnSurface, cn } from "@/components/tl/ui";
 import * as Dialog from "@radix-ui/react-dialog";
 import { t, tLine } from "@/lib/tl/i18n";
+import { keepsFiles } from "@/lib/tl/native-sync";
 
 type FormState = {
   content: string;
@@ -774,6 +775,10 @@ function MediaFields({
 
   async function pick(file: File | undefined) {
     if (!file) return;
+    if (!keepsFiles()) {
+      setError(t("Pictures and video stay in the Android and iOS app. This copy keeps the words."));
+      return;
+    }
     setBusy(true);
     setError("");
     try {
