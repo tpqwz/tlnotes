@@ -44,7 +44,6 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
       - run: npm ci
       - run: npm run android:sync
       - run: chmod +x android/gradlew && android/gradlew -p android assembleDebug
