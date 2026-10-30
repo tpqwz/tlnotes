@@ -34,7 +34,6 @@ import { compressImage, compressVideo } from "@/lib/tl/media";
 import { ingestAddress } from "@/lib/tl/watch";
 import { formatUiDate } from "@/lib/tl/language";
 import { Modal, btnGhost, btnInk, btnPrimary, btnSurface, cn } from "@/components/tl/ui";
-import * as Dialog from "@radix-ui/react-dialog";
 import { t, tLine } from "@/lib/tl/i18n";
 import { keepsFiles } from "@/lib/tl/native-sync";
 
@@ -1552,42 +1551,6 @@ function Wheel({
         </div>
       </div>
     </div>
-  );
-}
-
-export function HazardNotice({ open, lost, onAck }: { open: boolean; lost: boolean; onAck: () => void }) {
-  return (
-    <Dialog.Root open={open}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[80] bg-fg/55" />
-        <Dialog.Content
-          className="hazard-panel fixed inset-x-3 top-16 z-[80] mx-auto flex max-w-lg flex-col overflow-hidden focus:outline-none"
-          onEscapeKeyDown={(event) => event.preventDefault()}
-          onPointerDownOutside={(event) => event.preventDefault()}
-          onInteractOutside={(event) => event.preventDefault()}
-        >
-          <div className="hazard-tape" aria-hidden />
-          <div className="px-5 py-5">
-            <Dialog.Title className="font-display text-3xl leading-none">
-              {lost ? t("The journal did not open") : t("Notes can disappear")}
-            </Dialog.Title>
-            <Dialog.Description className="mt-3 text-base text-pretty leading-relaxed">
-              {lost
-                ? t(
-                    "The notes on this device did not open. They may still be stored. Restore a backup before adding anything. A new note will not replace what is stored. This loss is not fixed yet.",
-                  )
-                : t(
-                    "On this device, the journal can come back empty after it is opened again or refreshed. Export a backup before you add notes. A save will not replace notes that are still stored. This loss is not fixed yet.",
-                  )}
-            </Dialog.Description>
-            <button type="button" className="hazard-ack mt-6" onClick={onAck}>
-              {t("I understand")}
-            </button>
-          </div>
-          <div className="hazard-tape" aria-hidden />
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
   );
 }
 
