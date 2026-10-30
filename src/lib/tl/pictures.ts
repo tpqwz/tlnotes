@@ -1,5 +1,5 @@
 import { linkPreview, type LinkPreview, type Note } from "@/lib/tl/model";
-import { smallImage } from "@/lib/tl/import-entity";
+import { smallImage } from "@/lib/tl/small-image";
 
 const AGENT = "TLNotes/1.0 (personal repertorium; local pictures)";
 const tried = new Set<string>();

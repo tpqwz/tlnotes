@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { citedQuotation, quotationFaces, type Note } from "./model.ts";
 import { applyLanguage, languageChoices, languageCode, languageMatches, languageName } from "./language.ts";
 import { passages } from "./wiki.ts";
-import { smallImage } from "./import-entity.ts";
+import { smallImage } from "./small-image.ts";
 
 function quote(partial: Partial<Note> & Pick<Note, "content">): Note {
   return {

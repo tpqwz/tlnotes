@@ -1,6 +1,6 @@
 import { parseImport, type Note } from "@/lib/tl/model";
 import type { SearchModel } from "@/lib/tl/embed";
-import { canonicalNotes, journalFingerprint, mergeNotes } from "@/lib/tl/journal";
+import { canonicalNotes, journalFingerprint, journalWriteIsSafe, mergeNotes } from "@/lib/tl/journal";
 import { journalMatches, readJournal, writeJournal, writeRecords, writeSettings, writeVault, type JournalRecord } from "@/lib/tl/idb";
 import { isVaultOn, noteVault, openSealed, restoreSession, sealAll, sessionKey } from "@/lib/tl/vault";
 import { applyLanguage, cleanLanguageSetting } from "@/lib/tl/language";
@@ -401,14 +401,18 @@ function askToKeep() {
 function readLocal(): Persisted | null {
   try {
     const raw = localStorage.getItem(KEY);
+    const legacy = migrateLegacy();
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<Persisted>;
       const notes = Array.isArray(parsed.notes) ? parsed.notes : [];
       const trash = Array.isArray(parsed.trash) ? parsed.trash : [];
       const imported = parseImport({ notes, trash }) ?? { notes: [], trash: [] };
+      if (imported.notes.length === 0 && imported.trash.length === 0 && legacy && (legacy.notes.length > 0 || legacy.trash.length > 0)) {
+        return { notes: legacy.notes, trash: legacy.trash, settings: normalizeSettings(parsed.settings ?? legacy.settings) };
+      }
       return { notes: imported.notes, trash: imported.trash, settings: normalizeSettings(parsed.settings) };
     }
-    return migrateLegacy();
+    return legacy;
   } catch {
     return null;
   }
@@ -418,25 +422,75 @@ export function loadPersisted(): Persisted {
   return readLocal() ?? emptyStore();
 }
 
-function keepSettingsLocal(settings: Settings) {
-  const payload = JSON.stringify({ settings });
-  try {
-    localStorage.setItem(KEY, payload);
-  } catch {
-    try {
-      localStorage.removeItem(KEY);
-      localStorage.removeItem("tlnotes");
-      localStorage.removeItem("tlnotes-trash");
-      localStorage.setItem(KEY, payload);
-    } catch {
-      /* a full mirror must not block the journal */
+function lightNotes(notes: Note[]): Note[] {
+  return notes.map((note) => {
+    let copy = note;
+    if (note.image?.startsWith("data:")) {
+      copy = { ...copy };
+      delete copy.image;
     }
-  }
+    if (note.video?.startsWith("data:")) {
+      if (copy === note) copy = { ...note };
+      delete copy.video;
+    }
+    if (note.preview?.image?.startsWith("data:")) {
+      if (copy === note) copy = { ...note };
+      const preview = { ...note.preview };
+      delete preview.image;
+      copy.preview = preview;
+    }
+    return copy;
+  });
+}
+
+function rememberLegacyCopied() {
   try {
     localStorage.removeItem("tlnotes");
     localStorage.removeItem("tlnotes-trash");
   } catch {
-    /* the old copy is only a mirror */
+    /* the old keys can stay until a later copy succeeds */
+  }
+}
+
+/** Notes used to live here. IndexedDB is faster, but a phone can open it empty. This copy is what comes back. */
+function keepJournalLocal(data: Persisted, replace = false) {
+  if (isVaultOn()) {
+    keepSettingsLocal(data.settings);
+    return;
+  }
+  const existing = readLocal();
+  const storedIds = [...(existing?.notes ?? []), ...(existing?.trash ?? [])].map((note) => note.id);
+  const nextIds = [...data.notes, ...data.trash].map((note) => note.id);
+  if (existing && !journalWriteIsSafe(storedIds, nextIds, replace)) return;
+  const settings = data.settings;
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ notes: data.notes, trash: data.trash, settings }));
+    rememberLegacyCopied();
+    return;
+  } catch {
+    /* the pictures did not fit */
+  }
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ notes: lightNotes(data.notes), trash: lightNotes(data.trash), settings }));
+    rememberLegacyCopied();
+    return;
+  } catch {
+    /* leave the previous copy, which may still hold the notes */
+  }
+  if (existing && (existing.notes.length > 0 || existing.trash.length > 0)) return;
+  keepSettingsLocal(settings);
+}
+
+function keepSettingsLocal(settings: Settings) {
+  const existing = readLocal();
+  if (!isVaultOn() && existing && (existing.notes.length > 0 || existing.trash.length > 0)) {
+    keepJournalLocal({ notes: existing.notes, trash: existing.trash, settings });
+    return;
+  }
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ settings }));
+  } catch {
+    /* a settings copy must not erase a journal that did not fit */
   }
 }
 
@@ -540,7 +594,7 @@ export function savePersisted(data: Persisted, quiet = false, replace = false) {
     return;
   }
   try {
-    keepSettingsLocal(next.settings);
+    keepJournalLocal(next, replace);
   } catch {
     /* the journal itself is in IndexedDB */
   }
@@ -589,7 +643,7 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
         return { data: source, hadStore: hadLocal, locked: false, missing: false };
       }
       await writeJournal(source.notes, source.trash, source.settings, {}, true);
-      keepSettingsLocal(source.settings);
+      keepJournalLocal(source);
       backend = "idb";
       rememberBody(source.notes, source.trash);
       markCensus(source.notes.length + source.trash.length);
@@ -642,7 +696,7 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
         /* the journal is already open */
       }
     }
-    keepSettingsLocal(settings);
+    keepJournalLocal(data);
     backend = "idb";
     rememberBody(data.notes, data.trash);
     markCensus(data.notes.length + data.trash.length);
@@ -667,7 +721,7 @@ export async function acceptUnlocked(opened: Note[], settings: Settings): Promis
       const again = parseImport({ notes: merged.notes, trash: [] }) ?? parsed;
       data = { notes: again.notes, trash: again.trash, settings: data.settings };
     }
-    keepSettingsLocal(data.settings);
+    keepJournalLocal(data);
   }
   const key = sessionKey();
   if (key) removed = await writeRecords(await sealAll(data.notes, data.trash, key), data.settings, removed);
