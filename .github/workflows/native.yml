@@ -45,6 +45,10 @@ jobs:
       - run: |
           if [ ! -d ios ]; then npx cap add ios; fi
           npx cap sync ios
+          plist="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :NSCalendarsFullAccessUsageDescription string TLNotes reads events already on this device so they can be added to the journal." "$plist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :NSCalendarsFullAccessUsageDescription TLNotes reads events already on this device so they can be added to the journal." "$plist"
+          /usr/libexec/PlistBuddy -c "Add :NSCalendarsUsageDescription string TLNotes reads events already on this device so they can be added to the journal." "$plist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :NSCalendarsUsageDescription TLNotes reads events already on this device so they can be added to the journal." "$plist"
+          /usr/libexec/PlistBuddy -c "Add :NSCalendarsWriteOnlyAccessUsageDescription string TLNotes does not add events to the phone calendar." "$plist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :NSCalendarsWriteOnlyAccessUsageDescription TLNotes does not add events to the phone calendar." "$plist"
       - run: xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO build
       - run: |
           app=$(find build/ios/Build/Products -name 'App.app' -type d | head -1)

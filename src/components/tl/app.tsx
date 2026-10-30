@@ -6,6 +6,7 @@ import { compressImage, compressVideo } from "@/lib/tl/media";
 import { ingestAddress } from "@/lib/tl/watch";
 import { t, tLine } from "@/lib/tl/i18n";
 import { calendarNotes, notesToIcs, parseIcs } from "@/lib/tl/ics";
+import { readPhoneCalendar } from "@/lib/tl/phone-calendar";
 import { sampleNotes } from "@/lib/tl/sample";
 import { finishIncomingShare, listenNativeShare, noteFromShare, peekIncomingShare, pullShare, shareAsTyped } from "@/lib/tl/share";
 import {
@@ -27,6 +28,7 @@ import {
   type TypeSize,
 } from "@/lib/tl/storage";
 import { rememberJournal, startSync, syncDoorMode } from "@/lib/tl/sync";
+import { keepsFiles } from "@/lib/tl/native-sync";
 import {
   changePassphrase,
   enrollPasskey,
@@ -710,6 +712,10 @@ export function TimelineApp() {
 
   async function attachHeld(file: File | undefined) {
     if (!file) return;
+    if (!keepsFiles()) {
+      toast(t("Pictures and video stay in the Android and iOS app. This copy keeps the words."));
+      return;
+    }
     const kind = file.type || (/\.(png|jpe?g|gif|webp|bmp|avif|heic|heif)$/i.test(file.name) ? "image/" : /\.(mp4|webm|mov|m4v|mkv)$/i.test(file.name) ? "video/" : "");
     if (!kind.startsWith("image/") && !kind.startsWith("video/")) {
       toast.error(t("Choose a picture or a video."));
@@ -949,6 +955,34 @@ export function TimelineApp() {
       );
     }
     patch({ notes: [...map.values()] });
+  }
+
+  async function importPhoneCalendar() {
+    let notes: Note[] = [];
+    try {
+      notes = await readPhoneCalendar();
+    } catch {
+      toast.error(t("The phone calendar could not be read. Allow calendar access and try again."));
+      return;
+    }
+    if (notes.length === 0) {
+      toast(t("The phone calendar had nothing in the past year or the next two years."));
+      return;
+    }
+    setConfirm({
+      title: t("Import the phone calendar"),
+      message:
+        notes.length === 1
+          ? t("Add {n} event from this phone? A matching event is updated, not duplicated.", { n: notes.length })
+          : t("Add {n} events from this phone? A matching event is updated, not duplicated.", { n: notes.length }),
+      confirmLabel: t("Import"),
+      onConfirm: () => {
+        mergeCalendar(notes);
+        setConfirm(null);
+        setView("timeline");
+        toast.success(t("Calendar imported"));
+      },
+    });
   }
 
   async function onFile(file: File) {
@@ -1318,6 +1352,7 @@ export function TimelineApp() {
                   if (!current) return;
                   commit({ ...current, settings: { ...current.settings, pagePackage } });
                 }}
+                onPhoneCalendar={() => void importPhoneCalendar()}
                 onLinkPreviews={(linkPreviews) => {
                   const current = dataRef.current;
                   if (!current) return;

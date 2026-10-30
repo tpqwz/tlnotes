@@ -48,6 +48,7 @@ export function SettingsView({
   onEnterSends,
   pagePackage,
   onPagePackage,
+  onPhoneCalendar,
   onSample,
   sealed,
   passkey,
@@ -94,6 +95,7 @@ export function SettingsView({
   onEnterSends: (enterSends: boolean) => void;
   pagePackage: boolean;
   onPagePackage: (pagePackage: boolean) => void;
+  onPhoneCalendar: () => void;
   onSample: () => void;
   sealed: boolean;
   passkey: boolean;
@@ -111,6 +113,7 @@ export function SettingsView({
   const showSync = nativeSync();
   const showShare = nativeApp();
   const android = nativeAndroid();
+  const phone = nativeSync();
   const [pageApk, setPageApk] = useState<"idle" | "checking" | "newer" | "current" | "unconfirmed">("idle");
   const [pageUrl, setPageUrl] = useState("");
   const sections = CONTENTS.filter((item) => (item.id !== "settings-sync" || showSync) && (item.id !== "settings-sharing" || showShare));
@@ -245,6 +248,13 @@ export function SettingsView({
               ) : null}
             </div>
             {pagePackage ? <p className="text-sm text-pretty text-muted">{pagePackageStatus(pageApk)}</p> : null}
+          </div>
+        ) : null}
+        {phone ? (
+          <div className="mt-3">
+            <button type="button" className={btnSurface} onClick={onPhoneCalendar}>
+              {t("Import the phone calendar")}
+            </button>
           </div>
         ) : null}
       </Section>
