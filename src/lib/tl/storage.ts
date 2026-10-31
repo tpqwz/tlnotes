@@ -14,12 +14,12 @@ const CENSUS = "tlnotes.census";
 export type Toolbar = "float" | "strip";
 export type Face = "argon" | "neon" | "xenon" | "radon" | "krypton" | "ledger" | "sans" | "plex" | "atkinson" | "josefin";
 export type TypeSize = "smaller" | "small" | "regular" | "large" | "larger";
-export type Theme = "journal" | "original" | "brutal" | "deco" | "admiralty" | "chapel" | "pocket" | "dungeon" | "tavern" | "catalog" | "blueprint" | "terminal" | "broadsheet" | "motif" | "cde" | "irix" | "turbo" | "mac";
+export type Theme = "journal" | "plaque" | "original" | "brutal" | "deco" | "admiralty" | "chapel" | "pocket" | "dungeon" | "tavern" | "catalog" | "blueprint" | "terminal" | "broadsheet" | "motif" | "cde" | "irix" | "turbo" | "mac";
 export type Scheme = "parchment" | "original" | "night" | "press" | "deco" | "brutal" | "glass" | "classical" | "tea" | "ledger" | "admiralty" | "chapel" | "fresco" | "pocket" | "dungeon" | "tavern" | "catalog" | "blueprint" | "terminal" | "broadsheet" | "cde" | "irix" | "turbo" | "tvision" | "scp" | "scp-orange" | "scp-black" | "scp-white" | "scp-red" | "scp-grey" | "scp-yellow" | "mac";
 
 export const FACES: Face[] = ["argon", "neon", "xenon", "radon", "krypton", "ledger", "sans", "plex", "atkinson", "josefin"];
 export const TYPE_SIZES: TypeSize[] = ["smaller", "small", "regular", "large", "larger"];
-export const THEMES: Theme[] = ["journal", "original", "brutal", "deco", "admiralty", "chapel", "catalog", "blueprint", "terminal", "broadsheet", "motif", "cde", "irix", "pocket", "dungeon", "tavern", "turbo", "mac"];
+export const THEMES: Theme[] = ["journal", "plaque", "original", "brutal", "deco", "admiralty", "chapel", "catalog", "blueprint", "terminal", "broadsheet", "motif", "cde", "irix", "pocket", "dungeon", "tavern", "turbo", "mac"];
 export const SCHEMES: Scheme[] = ["parchment", "original", "night", "press", "deco", "brutal", "glass", "classical", "tea", "ledger", "admiralty", "chapel", "fresco", "pocket", "dungeon", "tavern", "catalog", "blueprint", "terminal", "broadsheet", "cde", "irix", "turbo", "tvision", "scp", "scp-orange", "scp-black", "scp-white", "scp-red", "scp-grey", "scp-yellow", "mac"];
 
 export const FACE_LABEL: Record<Face, string> = {
@@ -58,6 +58,7 @@ export const TYPE_SIZE_LABEL: Record<TypeSize, string> = {
 
 export const THEME_LABEL: Record<Theme | Scheme, string> = {
   journal: "Journal",
+  plaque: "Plaque",
   motif: "Motif",
   parchment: "Parchment",
   original: "Original",
@@ -213,7 +214,7 @@ export const defaultSettings = (): Settings => ({
   rule: 2,
   face: "argon",
   typeSize: "small",
-  theme: "journal",
+  theme: "plaque",
   scheme: "parchment",
   searchModel: "off",
   searchStem: false,
@@ -245,7 +246,7 @@ export function resolveLook(theme: string | undefined, scheme: string | undefine
   let nextScheme = scheme;
   if (!nextTheme || !THEMES.includes(nextTheme as Theme)) {
     const pair = nextTheme ? LEGACY_LOOK[nextTheme] : undefined;
-    nextTheme = pair ? pair[0] : "journal";
+    nextTheme = pair ? pair[0] : "plaque";
     if ((!nextScheme || !SCHEMES.includes(nextScheme as Scheme)) && pair) nextScheme = pair[1];
   }
   if (!nextScheme || !SCHEMES.includes(nextScheme as Scheme)) {
@@ -256,6 +257,7 @@ export function resolveLook(theme: string | undefined, scheme: string | undefine
 
 export const NATIVE_SCHEME: Record<Theme, Scheme> = {
   journal: "parchment",
+  plaque: "parchment",
   original: "original",
   brutal: "brutal",
   deco: "deco",
@@ -294,7 +296,7 @@ export function applyType(settings: Pick<Settings, "face" | "typeSize"> & Partia
 
 /** Runs before paint so a saved face does not flash, and so Android Back has a history entry to consume. */
 export const TYPE_BOOT =
-  '(function(){try{var s=JSON.parse(localStorage.getItem("tlnotes.v1")||"{}").settings||{};var faces={argon:1,neon:1,xenon:1,radon:1,krypton:1,ledger:1,sans:1,plex:1,atkinson:1,josefin:1};var sizes={smaller:1,small:1,regular:1,large:1,larger:1};var schemes={parchment:"#f3efe6",original:"#f5f5f5",night:"#161410",press:"#f7f5f0",deco:"#1c140e",brutal:"#fffdf5",glass:"#f3ecda",classical:"#e9e2d4",tea:"#f3efe4",ledger:"#f4f7fb",admiralty:"#e4ebe6",chapel:"#1a1740",fresco:"#e6e1cf",pocket:"#9bbc0f",dungeon:"#0d0d1a",tavern:"#3a2415",catalog:"#5c5146",blueprint:"#0b3a66",terminal:"#031406",broadsheet:"#f3efe4",cde:"#3d7370",irix:"#4e74a8",turbo:"#bfcae3",tvision:"#a5a4ce",scp:"#bfcae3","scp-orange":"#bfcae3","scp-black":"#bfcae3","scp-white":"#bfcae3","scp-red":"#bfcae3","scp-grey":"#bfcae3","scp-yellow":"#bfcae3",mac:"#ececec"};var frames={journal:1,original:1,brutal:1,deco:1,admiralty:1,chapel:1,pocket:1,dungeon:1,tavern:1,catalog:1,blueprint:1,terminal:1,broadsheet:1,motif:1,turbo:1,mac:1};var legacy={parchment:["journal","parchment"],night:["journal","night"],press:["journal","press"],glass:["journal","glass"],classical:["journal","classical"],tea:["journal","tea"],ledger:["journal","ledger"],fresco:["journal","fresco"],cde:["motif","cde"],irix:["motif","irix"]};if(faces[s.face])document.documentElement.dataset.face=s.face;document.documentElement.dataset.size=sizes[s.typeSize]?s.typeSize:"small";if(s.rule===1||s.rule===2||s.rule===3)document.documentElement.style.setProperty("--rule",s.rule+"px");var theme=s.theme,scheme=s.scheme;if(theme==="bauhaus"||!frames[theme]){var pair=legacy[theme]||["journal","parchment"];theme=pair[0];if(!schemes[scheme])scheme=pair[1];}if(!schemes[scheme])scheme=schemes[theme]?theme:"parchment";document.documentElement.dataset.theme=theme;document.documentElement.dataset.scheme=scheme;var m=document.querySelector(\'meta[name="theme-color"]\');if(m)m.setAttribute("content",schemes[scheme]);}catch(e){}try{if(window.parent!==window)return;function pack(extra){var base=history.state&&typeof history.state==="object"?history.state:{};return Object.assign({},base,extra,{tlReady:true,tlGuard:true});}if(!(history.state&&history.state.tlGuard))history.pushState(pack({tlFloor:false}),"");window.addEventListener("popstate",function(){var now=history.state&&typeof history.state==="object"?history.state:null;if(!now||now.tlFloor||!now.tlGuard)history.pushState(pack({tlFloor:false}),"");},true);window.addEventListener("pageshow",function(){var now=history.state&&typeof history.state==="object"?history.state:null;if(!now||!now.tlGuard)history.pushState(pack({tlFloor:false}),"");});}catch(e){}})();';
+  '(function(){try{var s=JSON.parse(localStorage.getItem("tlnotes.v1")||"{}").settings||{};var faces={argon:1,neon:1,xenon:1,radon:1,krypton:1,ledger:1,sans:1,plex:1,atkinson:1,josefin:1};var sizes={smaller:1,small:1,regular:1,large:1,larger:1};var schemes={parchment:"#f3efe6",original:"#f5f5f5",night:"#161410",press:"#f7f5f0",deco:"#1c140e",brutal:"#fffdf5",glass:"#f3ecda",classical:"#e9e2d4",tea:"#f3efe4",ledger:"#f4f7fb",admiralty:"#e4ebe6",chapel:"#1a1740",fresco:"#e6e1cf",pocket:"#9bbc0f",dungeon:"#0d0d1a",tavern:"#3a2415",catalog:"#5c5146",blueprint:"#0b3a66",terminal:"#031406",broadsheet:"#f3efe4",cde:"#3d7370",irix:"#4e74a8",turbo:"#bfcae3",tvision:"#a5a4ce",scp:"#bfcae3","scp-orange":"#bfcae3","scp-black":"#bfcae3","scp-white":"#bfcae3","scp-red":"#bfcae3","scp-grey":"#bfcae3","scp-yellow":"#bfcae3",mac:"#ececec"};var frames={journal:1,plaque:1,original:1,brutal:1,deco:1,admiralty:1,chapel:1,pocket:1,dungeon:1,tavern:1,catalog:1,blueprint:1,terminal:1,broadsheet:1,motif:1,turbo:1,mac:1};var legacy={parchment:["journal","parchment"],night:["journal","night"],press:["journal","press"],glass:["journal","glass"],classical:["journal","classical"],tea:["journal","tea"],ledger:["journal","ledger"],fresco:["journal","fresco"],cde:["motif","cde"],irix:["motif","irix"]};if(faces[s.face])document.documentElement.dataset.face=s.face;document.documentElement.dataset.size=sizes[s.typeSize]?s.typeSize:"small";if(s.rule===1||s.rule===2||s.rule===3)document.documentElement.style.setProperty("--rule",s.rule+"px");var theme=s.theme,scheme=s.scheme;if(theme==="bauhaus"||!frames[theme]){var pair=legacy[theme]||["plaque","parchment"];theme=pair[0];if(!schemes[scheme])scheme=pair[1];}if(!schemes[scheme])scheme=schemes[theme]?theme:"parchment";document.documentElement.dataset.theme=theme;document.documentElement.dataset.scheme=scheme;var m=document.querySelector(\'meta[name="theme-color"]\');if(m)m.setAttribute("content",schemes[scheme]);}catch(e){}try{if(window.parent!==window)return;function pack(extra){var base=history.state&&typeof history.state==="object"?history.state:{};return Object.assign({},base,extra,{tlReady:true,tlGuard:true});}if(!(history.state&&history.state.tlGuard))history.pushState(pack({tlFloor:false}),"");window.addEventListener("popstate",function(){var now=history.state&&typeof history.state==="object"?history.state:null;if(!now||now.tlFloor||!now.tlGuard)history.pushState(pack({tlFloor:false}),"");},true);window.addEventListener("pageshow",function(){var now=history.state&&typeof history.state==="object"?history.state:null;if(!now||!now.tlGuard)history.pushState(pack({tlFloor:false}),"");});}catch(e){}})();';
 
 export function normalizeSettings(settings: Partial<Settings> | null | undefined): Settings {
   const face = settings?.face && FACES.includes(settings.face) ? settings.face : "argon";

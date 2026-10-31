@@ -59,7 +59,7 @@ export const Route = createRootRoute({
     };
   },
   component: () => (
-    <html lang="en" className="antialiased" data-theme="journal" data-scheme="parchment" suppressHydrationWarning>
+    <html lang="en" className="antialiased" data-theme="plaque" data-scheme="parchment" suppressHydrationWarning>
       <head>
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: TYPE_BOOT }} />

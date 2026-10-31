@@ -377,17 +377,15 @@ export function SettingsView({
                 key={item}
                 type="button"
                 aria-pressed={scheme === item}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold"
-                style={{
-                  background: swatch.bg,
-                  color: swatch.fg,
-                  borderColor: scheme === item ? swatch.primary : swatch.border,
-                  boxShadow: scheme === item ? `inset 0 0 0 1px ${swatch.primary}` : undefined,
-                }}
+                aria-label={t(THEME_LABEL[item])}
+                title={t(THEME_LABEL[item])}
+                className="scheme-pick"
                 onClick={() => onScheme(item)}
               >
-                <span className="size-3 shrink-0 rounded-full" style={{ background: swatch.primary }} />
-                {t(THEME_LABEL[item])}
+                <span className="scheme-dot" aria-hidden="true">
+                  <span style={{ background: swatch.bg }} />
+                  <span style={{ background: swatch.primary }} />
+                </span>
               </button>
             );
           })}

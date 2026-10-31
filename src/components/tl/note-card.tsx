@@ -433,7 +433,7 @@ export function NoteCard({
           )}
           </div>
           {!plain && (
-          <div className="card-foot mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+          <div className={cn("card-foot mt-2 flex min-w-0 flex-wrap items-center gap-1.5", note.type !== "quotation" && "card-foot-full")}>
               {note.tags.length === 0 ? (
                 <span className="text-xs text-muted tabular-nums" title={recorded}>
                   {formatRecorded(note.edited)}
@@ -444,7 +444,7 @@ export function NoteCard({
                     key={tag}
                     type="button"
                     data-no-press
-                    className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
+                    className="tag-toggle rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
                     onClick={(event) => {
                       event.stopPropagation();
                       onToggleTag(tag);
@@ -457,12 +457,13 @@ export function NoteCard({
           </div>
           )}
         </div>
+        {(note.type === "quotation" || plain) && (
         <div className="relative w-11 shrink-0">
           {note.type === "quotation" && (
             <button
               type="button"
               data-no-press
-              className="absolute top-0 right-11 inline-flex size-11 items-center justify-center rounded-full text-muted hover:bg-bg hover:text-fg"
+              className="absolute top-0 right-0 inline-flex size-11 items-center justify-center rounded-full text-muted hover:bg-bg hover:text-fg"
               aria-label={t("Share quotation")}
               onClick={(event) => {
                 event.stopPropagation();
@@ -477,6 +478,7 @@ export function NoteCard({
               <Share2 className="size-4" />
             </button>
           )}
+          {plain && (
           <button
             type="button"
             data-no-press
@@ -489,7 +491,9 @@ export function NoteCard({
           >
             <MoreVertical className="size-4" />
           </button>
+          )}
         </div>
+        )}
         {!plain && (
           <span className="pointer-events-none absolute right-2 bottom-3 text-xs font-semibold tracking-wide text-muted uppercase">
             {typeLabel(note.type)}

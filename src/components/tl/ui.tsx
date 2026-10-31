@@ -11,16 +11,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const btnPrimary =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
+  "plaque plaque-fill inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
 
 export const btnGhost =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-fg hover:bg-bg disabled:opacity-40";
+  "plaque inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-fg hover:bg-bg disabled:opacity-40";
 
 export const btnInk =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-fg px-4 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-40";
+  "plaque plaque-fill inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-fg px-4 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-40";
 
 export const btnSurface =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-surface px-4 text-sm font-semibold text-fg lift";
+  "plaque inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-surface px-4 text-sm font-semibold text-fg lift";
 
 export function InfoButton({ title, text }: { title: string; text: string }) {
   const [open, setOpen] = useState(false);
@@ -51,16 +51,18 @@ export function Modal({
   children,
   level = 0,
   band = false,
+  room = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
   info?: string;
-  seat?: "high" | "low";
+  seat?: "high" | "low" | "hand";
   children: ReactNode;
   level?: number;
   band?: boolean;
+  room?: boolean;
 }) {
   const [tip, setTip] = useState(false);
   const z = level > 0 ? "z-[70]" : "z-50";
@@ -78,7 +80,9 @@ export function Modal({
           className={
             band
               ? `info-panel ${z} focus:outline-none`
-              : `modal-panel fixed inset-x-3 ${z} mx-auto flex max-w-lg flex-col overflow-hidden rounded-2xl bg-surface focus:outline-none ${seat === "low" ? "modal-low" : "top-10"}`
+              : room
+                ? `modal-panel modal-room ${z} flex flex-col overflow-hidden rounded-2xl bg-surface focus:outline-none`
+                : `modal-panel fixed inset-x-3 ${z} mx-auto flex max-w-lg flex-col overflow-hidden rounded-2xl bg-surface focus:outline-none ${seat === "low" ? "modal-low" : seat === "hand" ? "modal-hand" : "top-10"}`
           }
         >
           <div className="flex items-start justify-between gap-4 px-5 pt-5">
@@ -113,7 +117,7 @@ export function Modal({
               </span>
             </Dialog.Close>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5">{children}</div>
+          <div className={room ? "flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-4 pb-5" : "min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5"}>{children}</div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

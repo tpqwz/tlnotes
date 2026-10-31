@@ -258,9 +258,10 @@ export function TimelineApp() {
         }
       }
       if (!opened.missing && !opened.locked) {
-        const notes = withUpdates(loaded.notes, loaded.trash);
-        if (notes !== loaded.notes) {
-          loaded.notes = notes;
+        const settled = withUpdates(loaded.notes, loaded.trash);
+        if (settled.notes !== loaded.notes || settled.trash !== loaded.trash) {
+          loaded.notes = settled.notes;
+          loaded.trash = settled.trash;
           changed = true;
         }
       }
@@ -1262,9 +1263,10 @@ export function TimelineApp() {
     const settings = dataRef.current?.settings;
     if (!settings) return;
     const next = await acceptUnlocked(notes, settings);
-    const withNews = withUpdates(next.notes, next.trash);
-    if (withNews !== next.notes) {
-      next.notes = withNews;
+    const settled = withUpdates(next.notes, next.trash);
+    if (settled.notes !== next.notes || settled.trash !== next.trash) {
+      next.notes = settled.notes;
+      next.trash = settled.trash;
       savePersisted(next, true);
     }
     applyType(next.settings);
@@ -1858,7 +1860,7 @@ export function TimelineApp() {
       />
       <JumpDialog open={jumpOpen} place={place} index={jumpIndex} onClose={() => setJumpOpen(false)} onJump={jumpTo} />
       <ConfirmDialog state={confirm} onCancel={() => setConfirm(null)} />
-      <Modal open={tagMany} onOpenChange={setTagMany} title={t("Tag")} info={t("The tag is added to every selected note. Tags they already have stay.")}>
+      <Modal open={tagMany} onOpenChange={setTagMany} seat="hand" title={t("Tag")} info={t("The tag is added to every selected note. Tags they already have stay.")}>
         <div className="flex gap-2">
           <input
             className="field"
@@ -2039,7 +2041,7 @@ function NavButton({
       aria-label={t(label)}
       aria-pressed={active}
       className={cn(
-        "inline-flex size-11 shrink-0 items-center justify-center rounded-full lift",
+        "plaque inline-flex size-11 shrink-0 items-center justify-center rounded-full lift",
         active ? "bg-primary text-primary-fg" : "bg-surface text-fg",
       )}
       onClick={onClick}

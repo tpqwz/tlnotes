@@ -1665,10 +1665,158 @@ html[data-native="android"] .composer {
   box-shadow: var(--shadow-border-hover);
 }
 
+.modal-panel.modal-room {
+  position: fixed;
+  top: max(0.5rem, env(safe-area-inset-top, 0px));
+  right: max(0.5rem, env(safe-area-inset-right, 0px));
+  bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  left: max(0.5rem, env(safe-area-inset-left, 0px));
+  width: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+}
+
+@media (min-width: 700px) {
+  .modal-panel.modal-room {
+    top: 5dvh;
+    bottom: 5dvh;
+    left: 50%;
+    right: auto;
+    width: min(92vw, 46rem);
+    transform: translateX(-50%);
+  }
+}
+
+@media (min-width: 1100px) {
+  .modal-panel.modal-room {
+    top: 7dvh;
+    bottom: 7dvh;
+    width: min(86vw, 64rem);
+  }
+}
+
 .modal-low {
   top: auto;
   bottom: calc(4.5rem + var(--obstruction, env(safe-area-inset-bottom, 0px)));
   max-height: min(70dvh, 36rem);
+}
+
+.modal-panel.modal-hand {
+  top: auto;
+  bottom: calc(4.75rem + var(--obstruction, env(safe-area-inset-bottom, 0px)));
+  max-height: min(62dvh, 28rem);
+}
+
+@media (min-width: 700px) {
+  .modal-panel.modal-hand {
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    max-height: min(70dvh, 32rem);
+  }
+}
+
+html[data-theme="plaque"] :is(button.plaque, .plaque) {
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  background-color: transparent;
+  color: var(--color-fg);
+  box-shadow: inset 0 -2px #c6a15b;
+  transition: transform 90ms, box-shadow 90ms, background-color 90ms, color 90ms;
+}
+
+html[data-theme="plaque"] :is(button.plaque, .plaque):hover:not(:disabled) {
+  color: var(--color-fg);
+}
+
+html[data-theme="plaque"] :is(button.plaque, .plaque):active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 3px 5px #1e1a1638, inset 0 -2px #a6843e;
+}
+
+html[data-theme="plaque"] :is(button.plaque, .plaque)[aria-pressed="true"] {
+  background-color: var(--color-surface);
+  color: var(--color-fg);
+  box-shadow: inset 0 2px 4px #1e1a162e, inset 0 -2px #c6a15b;
+}
+
+html[data-theme="plaque"] :is(button.plaque, .plaque).plaque-fill {
+  background-color: var(--color-primary);
+  color: var(--color-primary-fg);
+  border-color: color-mix(in srgb, #c6a15b 50%, var(--color-border));
+}
+
+html[data-theme="plaque"] :is(button.plaque, .plaque).plaque-fill:hover:not(:disabled),
+html[data-theme="plaque"] :is(button.plaque, .plaque).plaque-fill:active:not(:disabled) {
+  color: var(--color-primary-fg);
+}
+
+html[data-theme="plaque"] button.plaque.lift {
+  background-color: var(--color-surface);
+}
+
+html[data-theme="plaque"] div.lift[data-kind] {
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  box-shadow: inset 0 -2px #c6a15b, var(--shadow-border);
+}
+
+html[data-theme="plaque"] div.lift[data-kind].note-picked {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-primary) 50%, transparent), inset 0 -2px #c6a15b, var(--shadow-border);
+}
+
+html[data-theme="plaque"] .tag-toggle {
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  background-color: transparent;
+  color: var(--color-fg);
+  box-shadow: inset 0 -2px #c6a15b;
+}
+
+html[data-theme="plaque"] .tag-toggle[aria-pressed="true"] {
+  background-color: var(--color-surface);
+  box-shadow: inset 0 2px 4px #1e1a162e, inset 0 -2px #c6a15b;
+}
+
+html[data-theme="plaque"] .tag-toggle:active {
+  transform: translateY(1px);
+}
+
+.scheme-pick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  background: var(--color-surface);
+  box-shadow: inset 0 -2px #c6a15b;
+  transition: transform 90ms, box-shadow 90ms;
+}
+
+.scheme-pick[aria-pressed="true"] {
+  box-shadow: inset 0 2px 4px #1e1a162e, inset 0 -2px #c6a15b;
+}
+
+.scheme-pick:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 3px 5px #1e1a1638, inset 0 -2px #a6843e;
+}
+
+.scheme-dot {
+  display: flex;
+  width: 1.35rem;
+  height: 1.35rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 25%, transparent);
+  border-radius: 999px;
+}
+
+.scheme-dot > span {
+  width: 50%;
+  height: 100%;
 }
 
 .info-panel {
@@ -1781,6 +1929,11 @@ mark.hit {
   padding-top: 0.5rem;
   padding-right: 3.5rem;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.card-foot-full {
+  margin-right: 0;
+  padding-right: 5rem;
 }
 
 .note-flash {

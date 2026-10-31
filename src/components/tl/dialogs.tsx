@@ -30,13 +30,9 @@ import {
 } from "@/lib/tl/model";
 import { notesToIcs } from "@/lib/tl/ics";
 import { downloadText } from "@/lib/tl/storage";
-import { compressImage, compressVideo } from "@/lib/tl/media";
-import { ingestAddress } from "@/lib/tl/watch";
 import { formatUiDate } from "@/lib/tl/language";
 import { Modal, InfoButton, btnGhost, btnInk, btnPrimary, btnSurface, cn } from "@/components/tl/ui";
 import { t, tLine } from "@/lib/tl/i18n";
-import { keepsFiles } from "@/lib/tl/native-sync";
-import { useStoredSrc } from "@/components/tl/note-card";
 
 type FormState = {
   content: string;
@@ -153,8 +149,11 @@ export function EditorDialog({
   }
 
   const family = isPageType(form.type) ? PAGE_TYPES : TIMELINE_TYPES;
-  const typeOptions: string[] = [...family].sort((a, b) => typeLabel(a).localeCompare(typeLabel(b)));
-  if (form.type !== "update" && !typeOptions.includes(form.type)) typeOptions.push(form.type);
+  const lockedType = form.type === "update" || form.type === "image" || form.type === "video";
+  const typeOptions: string[] = [...family]
+    .filter((type) => type !== "image" && type !== "video")
+    .sort((a, b) => typeLabel(a).localeCompare(typeLabel(b)));
+  if (!lockedType && !typeOptions.includes(form.type)) typeOptions.push(form.type);
   const existing = collectTags(corpus).filter((tag) => !form.tags.includes(tag));
   const showPoint = !isPageType(form.type) && form.type !== "draft" && form.type !== "period";
   const showPeriod = form.type === "period";
@@ -341,18 +340,20 @@ export function EditorDialog({
       }}
       title={typeLabel(form.type)}
       info={form.type && TYPE_HINT[form.type] ? t(TYPE_HINT[form.type]) : undefined}
+      room
     >
       <form
         onSubmit={(event) => {
           event.preventDefault();
           save();
         }}
-        className="flex flex-col gap-4"
+        className="flex min-h-0 flex-1 flex-col"
       >
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
           {t("Type")}
-          {form.type === "update" ? (
-            <p className="field flex items-center">{t("Update")}</p>
+          {lockedType ? (
+            <p className="field flex items-center">{typeLabel(form.type)}</p>
           ) : (
             <select className="field" value={form.type} onChange={(event) => setType(event.target.value)}>
               {typeOptions.map((type) => (
@@ -364,25 +365,15 @@ export function EditorDialog({
           )}
         </label>
 
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
+        <label className="flex min-h-52 flex-1 flex-col gap-1.5 text-sm font-medium text-fg">
           {contentLabel(form.type)}
           <textarea
-            className="field min-h-40"
+            className="field min-h-40 flex-1 resize-none"
             value={form.content}
             placeholder={contentPlaceholder(form.type)}
             onChange={(event) => patch({ content: event.target.value })}
           />
         </label>
-
-        <MediaFields
-          image={form.image}
-          video={form.video}
-          imageFacts={form.imageFacts}
-          videoFacts={form.videoFacts}
-          showPicture={form.type === "image" || Boolean(form.image)}
-          showClip={form.type === "video" || Boolean(form.video)}
-          onChange={(next) => patch(next)}
-        />
 
         {form.type === "link" && (
           <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
@@ -678,7 +669,7 @@ export function EditorDialog({
                 <li key={tag}>
                   <button
                     type="button"
-                    className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                    className="tag-toggle rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                     onClick={() => patch({ tags: form.tags.filter((item) => item !== tag) })}
                   >
                     {tag} ×
@@ -715,7 +706,7 @@ export function EditorDialog({
                   <button
                     key={tag}
                     type="button"
-                    className="rounded-full border border-border px-2.5 py-1 text-xs text-muted hover:text-fg"
+                    className="tag-toggle rounded-full border border-border px-2.5 py-1 text-xs text-muted hover:text-fg"
                     onClick={() => addTag(tag)}
                   >
                     {tag}
@@ -734,8 +725,9 @@ export function EditorDialog({
             <InfoButton title={t("Times")} text={t("Dating it to another year leaves these times as they are.")} />
           )}
         </p>
+        </div>
 
-        <div className="mt-2 flex items-center justify-between gap-3 border-t border-border pt-4">
+        <div className="mt-4 flex shrink-0 items-center justify-between gap-3 border-t border-border pt-4">
           <div className="flex min-w-0 flex-col items-start gap-2">
             <button
               type="button"
@@ -761,153 +753,6 @@ export function EditorDialog({
         </div>
       </form>
     </Modal>
-  );
-}
-
-function MediaFields({
-  image,
-  video,
-  imageFacts,
-  videoFacts,
-  showPicture,
-  showClip,
-  onChange,
-}: {
-  image: string;
-  video: string;
-  imageFacts: MediaFacts;
-  videoFacts: MediaFacts;
-  showPicture: boolean;
-  showClip: boolean;
-  onChange: (next: { image?: string; video?: string; imageFacts?: MediaFacts; videoFacts?: MediaFacts }) => void;
-}) {
-  const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [address, setAddress] = useState("");
-  const picture = useStoredSrc(image);
-  const clip = useStoredSrc(video);
-
-  async function pick(file: File | undefined) {
-    if (!file) return;
-    if (!keepsFiles()) {
-      setError(t("Pictures and video stay in the Android and iOS app. This copy keeps the words."));
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      const kind = file.type || (/\.(png|jpe?g|gif|webp|bmp|avif|heic|heif)$/i.test(file.name) ? "image/" : /\.(mp4|webm|mov|m4v|mkv)$/i.test(file.name) ? "video/" : "");
-      if (kind.startsWith("video/")) {
-        const kept = await compressVideo(file, file.name);
-        onChange({ video: kept.data, videoFacts: { ...kept.facts, name: file.name } });
-      } else if (kind.startsWith("image/")) {
-        const kept = await compressImage(file, file.name);
-        onChange({ image: kept.data, imageFacts: { ...kept.facts, name: file.name } });
-      } else setError(t("Choose a picture or a video."));
-    } catch (caught) {
-      setError(caught instanceof Error ? tLine(caught.message) : t("Could not attach that."));
-    } finally {
-      setBusy(false);
-      if (input.current) input.current.value = "";
-    }
-  }
-
-  async function pull() {
-    const target = address.trim();
-    if (!target) return;
-    setBusy(true);
-    setError("");
-    try {
-      const taken = await ingestAddress(target);
-      if (!taken) throw new Error(t("That address is not a picture or a video."));
-      if (taken.kind === "video") {
-        onChange({
-          ...(taken.data ? { video: taken.data } : {}),
-          ...(taken.poster ? { image: taken.poster } : {}),
-          videoFacts: taken.facts,
-        });
-      } else onChange({ image: taken.data, imageFacts: taken.facts });
-      setAddress("");
-    } catch (caught) {
-      setError(caught instanceof Error ? tLine(caught.message) : t("Could not fetch that."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
-          <p className="text-sm font-medium text-fg">{t("Picture or clip")}</p>
-          <InfoButton
-            title={t("Picture or clip")}
-            text={t("A large picture or clip is shrunk before it is kept. A clip longer than twenty seconds keeps only the start. Fetching keeps the address, and the file when the site allows it.")}
-          />
-        </div>
-        <button type="button" className="text-sm font-semibold text-primary disabled:opacity-40" disabled={busy} onClick={() => input.current?.click()}>
-          {busy ? t("Working…") : t("Attach")}
-        </button>
-      </div>
-      <div className="flex gap-2">
-        <input className="field min-w-0 flex-1" placeholder={t("Or an address to fetch")} value={address} onChange={(event) => setAddress(event.target.value)} />
-        <button type="button" className="text-sm font-semibold text-primary disabled:opacity-40" disabled={busy || address.trim() === ""} onClick={() => void pull()}>
-          {t("Fetch")}
-        </button>
-      </div>
-      <input ref={input} type="file" accept="image/*,video/*" className="hidden" onChange={(event) => void pick(event.target.files?.[0])} />
-      {picture ? (
-        <div>
-          <img src={picture} alt="" className="max-h-40 w-full rounded-xl object-cover" />
-          <button type="button" className="mt-1 text-xs font-semibold text-muted" onClick={() => onChange({ image: "", imageFacts: {} })}>
-            {t("Remove picture")}
-          </button>
-        </div>
-      ) : null}
-      {clip ? (
-        <div>
-          <video src={clip} controls playsInline className="max-h-48 w-full rounded-xl bg-bg" />
-          <button type="button" className="mt-1 text-xs font-semibold text-muted" onClick={() => onChange({ video: "", videoFacts: {} })}>
-            {t("Remove clip")}
-          </button>
-        </div>
-      ) : null}
-      {showPicture ? <FactFields title={t("Picture")} facts={imageFacts} clip={false} onChange={(imageFacts) => onChange({ imageFacts })} /> : null}
-      {showClip ? <FactFields title={t("Clip")} facts={videoFacts} clip onChange={(videoFacts) => onChange({ videoFacts })} /> : null}
-      {error ? <p className="text-sm text-muted">{error}</p> : null}
-    </div>
-  );
-}
-
-function FactFields({
-  title,
-  facts,
-  clip,
-  onChange,
-}: {
-  title: string;
-  facts: MediaFacts;
-  clip: boolean;
-  onChange: (facts: MediaFacts) => void;
-}) {
-  function set(partial: MediaFacts) {
-    onChange({ ...facts, ...partial });
-  }
-  return (
-    <fieldset className="flex flex-col gap-2 rounded-xl bg-bg px-3 py-3">
-      <legend className="text-xs font-semibold tracking-wide text-muted uppercase">{title}</legend>
-      <input className="field" placeholder={t("Original file name")} value={facts.name ?? ""} onChange={(event) => set({ name: event.target.value })} />
-      <div className="grid grid-cols-2 gap-2">
-        <input className="field" inputMode="numeric" placeholder={t("Width")} aria-label={t("{title} width", { title })} value={facts.width ?? ""} onChange={(event) => set({ width: event.target.value === "" ? undefined : Number(event.target.value) })} />
-        <input className="field" inputMode="numeric" placeholder={t("Height")} aria-label={t("{title} height", { title })} value={facts.height ?? ""} onChange={(event) => set({ height: event.target.value === "" ? undefined : Number(event.target.value) })} />
-        <input className="field" inputMode="numeric" placeholder={t("Size in bytes")} aria-label={t("{title} size", { title })} value={facts.bytes ?? ""} onChange={(event) => set({ bytes: event.target.value === "" ? undefined : Number(event.target.value) })} />
-        {clip ? (
-          <input className="field" inputMode="decimal" placeholder={t("Length in seconds")} aria-label={t("Clip length")} value={facts.seconds ?? ""} onChange={(event) => set({ seconds: event.target.value === "" ? undefined : Number(event.target.value) })} />
-        ) : null}
-      </div>
-      <input className="field" placeholder={t("Address it was fetched from")} value={facts.url ?? ""} onChange={(event) => set({ url: event.target.value })} />
-    </fieldset>
   );
 }
 
@@ -1234,11 +1079,13 @@ function FilterChip({
   selected,
   onToggle,
   onOnly,
+  className,
   children,
 }: {
   selected: boolean;
   onToggle: () => void;
   onOnly: () => void;
+  className?: string;
   children: string;
 }) {
   const timer = useRef<number | null>(null);
@@ -1257,6 +1104,7 @@ function FilterChip({
       className={cn(
         "inline-flex h-11 items-center rounded-full px-3 text-sm",
         selected ? "bg-primary/15 text-fg" : "bg-bg text-muted",
+        className,
       )}
       onPointerDown={() => {
         held.current = false;
@@ -1406,6 +1254,7 @@ export function FilterDialog({
                 <FilterChip
                   key={tag}
                   selected={tags.includes(tag)}
+                  className="tag-toggle"
                   onToggle={() => setTags((current) => toggle(current, tag))}
                   onOnly={() => setTags([tag])}
                 >

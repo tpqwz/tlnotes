@@ -276,18 +276,8 @@ export function datePrecision(note) {
 	if (partial.year) return "year";
 	return "time";
 }
-function periodStamp(date) {
-	if (!date || date.year == null) return "";
-	const parts = [String(date.year)];
-	if (date.month != null) parts.push(String(date.month).padStart(2, "0"));
-	if (date.day != null) parts.push(String(date.day).padStart(2, "0"));
-	return parts.join(" ");
-}
 export function periodLineLabel(note) {
-	const span = note.date && isSpan(note.date) ? note.date : null;
-	const begin = periodStamp(span?.begin);
-	const end = span?.end && span.end.year != null ? periodStamp(span.end) : "";
-	return [begin && end ? `${begin} – ${end}` : begin ? `${begin} –` : end, note.content.replace(/\s+/g, " ").trim()].filter(Boolean).join("  ");
+	return note.content.replace(/\s+/g, " ").trim();
 }
 export function formatRecorded(ts) {
 	return formatUiDate(new Date(ts), {

@@ -326,8 +326,8 @@ export function TaskList({
                 aria-pressed={on}
                 className={
                   on
-                    ? "rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-primary-fg"
-                    : "rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                    ? "tag-toggle rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-primary-fg"
+                    : "tag-toggle rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                 }
                 onClick={() => toggleTag(tag)}
               >

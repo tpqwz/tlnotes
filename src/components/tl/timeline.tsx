@@ -5,6 +5,7 @@ import {
   periodLineLabel,
   safeColor,
   type Note,
+  type TimelineRow,
 } from "@/lib/tl/model";
 import { cn, Highlight } from "@/components/tl/ui";
 import { t } from "@/lib/tl/i18n";
@@ -305,6 +306,8 @@ export function Timeline({
     );
   }
 
+  const folded = new Set<number>();
+
   return (
     <div>
       {showPeriodHint && (
@@ -315,6 +318,39 @@ export function Timeline({
       <div className={cn("relative flex items-stretch", !rightHanded && "flex-row-reverse")}>
         <div ref={listRef} data-gutter={!scopeCollapsed ? (rightHanded ? "right" : "left") : undefined} className="relative z-1 flex min-w-0 flex-1 flex-col pb-28">
           {rows.map((row, index) => {
+            if (folded.has(index)) return null;
+            if (row.kind === "year" || row.kind === "month" || row.kind === "day") {
+              const group: Array<Extract<TimelineRow, { kind: "year" | "month" | "day" }>> = [row];
+              let look = index + 1;
+              while (look < rows.length) {
+                const next = rows[look];
+                if (next.kind !== "year" && next.kind !== "month" && next.kind !== "day") break;
+                group.push(next);
+                folded.add(look);
+                look += 1;
+              }
+              if (group.length > 1) {
+                return (
+                  <p
+                    key={group.map((item) => item.key).join("-")}
+                    className={cn("mb-2 text-sm leading-tight", index > 0 && "mt-4")}
+                  >
+                    {group.map((item, part) => (
+                      <span
+                        key={item.key}
+                        data-mark={item.kind}
+                        data-label={item.kind === "day" ? undefined : item.label}
+                        data-day={item.kind === "day" ? item.day : undefined}
+                        className={item.kind === "day" ? "font-medium text-muted" : "font-display text-lg text-fg"}
+                      >
+                        {part > 0 ? " " : ""}
+                        {item.label}
+                      </span>
+                    ))}
+                  </p>
+                );
+              }
+            }
             if (row.kind === "year") {
               return (
                 <h2
