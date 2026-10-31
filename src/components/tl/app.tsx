@@ -232,7 +232,7 @@ export function TimelineApp() {
       }
       const loaded = opened.data;
       if (opened.missing) {
-        toast.error(t("The notes on this device did not open. Restore a backup before adding anything."));
+        toast.error(t("The stored notes did not load. Free some space and open TLNotes again, or restore a backup. Adding a note now starts a new journal."));
       } else if (!opened.hadStore && loaded.notes.length === 0 && loaded.trash.length === 0) {
         loaded.notes = sampleNotes(Date.now()).filter((note) => !isPageType(note.type));
         savePersisted(loaded, true);
