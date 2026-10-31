@@ -7,7 +7,7 @@ android {
         applicationId "app.tlnotes.journal"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
+        versionCode System.getenv("TLNOTES_VERSION_CODE") ? System.getenv("TLNOTES_VERSION_CODE").toInteger() : 4
         versionName "0.4.0-beta"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,9 +16,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    def store = System.getenv("TLNOTES_KEYSTORE")
+    signingConfigs {
+        release {
+            if (store) {
+                storeFile file(store)
+                storePassword System.getenv("TLNOTES_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("TLNOTES_KEY_ALIAS")
+                keyPassword System.getenv("TLNOTES_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
+            if (store) signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

@@ -46,11 +46,30 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npm run android:sync
-      - run: chmod +x android/gradlew && android/gradlew -p android assembleDebug
-      - run: |
+      - name: Build the Android package
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          TLNOTES_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TLNOTES_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TLNOTES_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -eu
+          chmod +x android/gradlew
+          code=$(git rev-list --count HEAD)
+          if [ "$code" -lt 5 ]; then code=5; fi
+          export TLNOTES_VERSION_CODE="$code"
           stamp=$(tr -d '[:space:]' < dist/client/__tlnotes/build)
           mkdir -p android-out
-          cp android/app/build/outputs/apk/debug/app-debug.apk android-out/tlnotes.apk
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$TLNOTES_KEYSTORE_PASSWORD" ] && [ -n "$TLNOTES_KEY_ALIAS" ] && [ -n "$TLNOTES_KEY_PASSWORD" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/tlnotes.keystore"
+            export TLNOTES_KEYSTORE="$RUNNER_TEMP/tlnotes.keystore"
+            android/gradlew -p android assembleRelease
+            cp android/app/build/outputs/apk/release/app-release.apk android-out/tlnotes.apk
+          else
+            echo "No signing key is stored in GitHub secrets. Building the debug package, which cannot update a copy signed with another key."
+            android/gradlew -p android assembleDebug
+            cp android/app/build/outputs/apk/debug/app-debug.apk android-out/tlnotes.apk
+          fi
           printf '%s\n' "{\"build\":\"$stamp\",\"apk\":\"tlnotes.apk\"}" > android-out/android.json
       - uses: actions/upload-artifact@v4
         with:

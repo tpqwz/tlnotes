@@ -24,8 +24,28 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npm run android:sync
-      - run: chmod +x android/gradlew && android/gradlew -p android assembleDebug
-      - run: cp android/app/build/outputs/apk/debug/app-debug.apk TLNotes.apk
+      - name: Build the Android package
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          TLNOTES_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TLNOTES_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TLNOTES_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -eu
+          chmod +x android/gradlew
+          code=$(git rev-list --count HEAD)
+          if [ "$code" -lt 5 ]; then code=5; fi
+          export TLNOTES_VERSION_CODE="$code"
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$TLNOTES_KEYSTORE_PASSWORD" ] && [ -n "$TLNOTES_KEY_ALIAS" ] && [ -n "$TLNOTES_KEY_PASSWORD" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/tlnotes.keystore"
+            export TLNOTES_KEYSTORE="$RUNNER_TEMP/tlnotes.keystore"
+            android/gradlew -p android assembleRelease
+            cp android/app/build/outputs/apk/release/app-release.apk TLNotes.apk
+          else
+            echo "No signing key is stored in GitHub secrets. Building the debug package, which cannot update a copy signed with another key."
+            android/gradlew -p android assembleDebug
+            cp android/app/build/outputs/apk/debug/app-debug.apk TLNotes.apk
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: tlnotes-android
@@ -96,7 +116,7 @@ jobs:
           fi
           test ${#files[@]} -gt 0
           notes=$(cat <<'EOF'
-          Android: TLNotes.apk is a debug package. It can be installed on a phone.
+          Android: TLNotes.apk is signed with the key stored in the repository secrets. A newer build can be installed over an older one signed with that same key. A copy installed from an earlier debug package must be removed once before this one will install.
 
           iOS: TLNotes-ios-simulator.zip is an unsigned simulator build. It is not a signed iPhone app, and it will not install from this page. A phone build needs an Apple developer signature.
           EOF
