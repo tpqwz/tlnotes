@@ -33,9 +33,10 @@ import { downloadText } from "@/lib/tl/storage";
 import { compressImage, compressVideo } from "@/lib/tl/media";
 import { ingestAddress } from "@/lib/tl/watch";
 import { formatUiDate } from "@/lib/tl/language";
-import { Modal, btnGhost, btnInk, btnPrimary, btnSurface, cn } from "@/components/tl/ui";
+import { Modal, InfoButton, btnGhost, btnInk, btnPrimary, btnSurface, cn } from "@/components/tl/ui";
 import { t, tLine } from "@/lib/tl/i18n";
 import { keepsFiles } from "@/lib/tl/native-sync";
+import { useStoredSrc } from "@/components/tl/note-card";
 
 type FormState = {
   content: string;
@@ -153,7 +154,7 @@ export function EditorDialog({
 
   const family = isPageType(form.type) ? PAGE_TYPES : TIMELINE_TYPES;
   const typeOptions: string[] = [...family].sort((a, b) => typeLabel(a).localeCompare(typeLabel(b)));
-  if (!typeOptions.includes(form.type)) typeOptions.push(form.type);
+  if (form.type !== "update" && !typeOptions.includes(form.type)) typeOptions.push(form.type);
   const existing = collectTags(corpus).filter((tag) => !form.tags.includes(tag));
   const showPoint = !isPageType(form.type) && form.type !== "draft" && form.type !== "period";
   const showPeriod = form.type === "period";
@@ -339,7 +340,7 @@ export function EditorDialog({
         if (!open) onClose();
       }}
       title={typeLabel(form.type)}
-      description={form.type && TYPE_HINT[form.type] ? t(TYPE_HINT[form.type]) : ""}
+      info={form.type && TYPE_HINT[form.type] ? t(TYPE_HINT[form.type]) : undefined}
     >
       <form
         onSubmit={(event) => {
@@ -350,13 +351,17 @@ export function EditorDialog({
       >
         <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
           {t("Type")}
-          <select className="field" value={form.type} onChange={(event) => setType(event.target.value)}>
-            {typeOptions.map((type) => (
-              <option key={type} value={type}>
-                {typeLabel(type)}
-              </option>
-            ))}
-          </select>
+          {form.type === "update" ? (
+            <p className="field flex items-center">{t("Update")}</p>
+          ) : (
+            <select className="field" value={form.type} onChange={(event) => setType(event.target.value)}>
+              {typeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {typeLabel(type)}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
 
         <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
@@ -517,15 +522,6 @@ export function EditorDialog({
                 ))}
               </select>
             </label>
-            <p className="text-sm text-pretty text-muted">
-              {form.type === "headword"
-                ? t("The first title is the headword. Another title may be another form, or the same word in another language.")
-                : form.type === "persona"
-                  ? t("A person, kept in the repertorium. The title is the name.")
-                  : form.type === "book"
-                    ? t("A book. The title is its name. Authors and subjects are names of other pages.")
-                    : t("MyST. A cross-reference is {doc}`Another page` or [[Another page]]. A note begins with :::{note}.")}
-            </p>
             <input className="field" placeholder={t("A small picture address")} value={form.image} onChange={(event) => patch({ image: event.target.value })} />
             <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
               {t("Description")}
@@ -536,7 +532,21 @@ export function EditorDialog({
               />
             </label>
             <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1">
               <p className="text-sm font-medium text-fg">{form.type === "headword" ? t("Headword") : form.type === "persona" ? t("Name") : t("Titles")}</p>
+              <InfoButton
+                title={t("About this type")}
+                text={
+                  form.type === "headword"
+                    ? t("The first title is the headword. Another title may be another form, or the same word in another language.")
+                    : form.type === "persona"
+                      ? t("A person, kept in the repertorium. The title is the name.")
+                      : form.type === "book"
+                        ? t("A book. The title is its name. Authors and subjects are names of other pages.")
+                        : t("MyST. A cross-reference is {doc}`Another page` or [[Another page]]. A note begins with :::{note}.")
+                }
+              />
+            </div>
               {form.labels.map((label, index) => (
                 <div key={`${label.language}:${label.text}:${index}`} className="flex flex-col gap-2 rounded-xl bg-bg px-3 py-3">
                   <div className="flex items-center justify-between gap-3">
@@ -619,6 +629,7 @@ export function EditorDialog({
               />
               <DateFields
                 label={t("Ends")}
+                hint={t("Leave the end year empty and the line stays open.")}
                 year={form.endYear}
                 month={form.endMonth}
                 day={form.endDay}
@@ -626,7 +637,6 @@ export function EditorDialog({
                 onChange={(partial) => patch(partial)}
               />
             </div>
-            <p className="text-sm text-muted">{t("Leave the end year empty and the line stays open.")}</p>
             <div>
               <p className="text-sm font-medium text-fg">{t("Period color")}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -679,7 +689,7 @@ export function EditorDialog({
           )}
         </div>
 
-        <Modal open={tagsOpen} level={1} onOpenChange={setTagsOpen} title={t("Tags")} description={t("Add one, or choose from the tags already in the journal.")}>
+        <Modal open={tagsOpen} level={1} onOpenChange={setTagsOpen} title={t("Tags")} info={t("Add one, or choose from the tags already in the journal.")}>
           <div className="flex gap-2">
             <input
               className="field"
@@ -715,10 +725,14 @@ export function EditorDialog({
           )}
         </Modal>
 
-        <p className="text-xs text-pretty text-muted">
-          {t("Written {when}", { when: formatRecorded(note.created) })}
-          {note.edited !== note.created ? ` · ${t("Last edited {when}", { when: formatRecorded(note.edited) })}` : ""}.
-          {form.type === "draft" ? "" : ` ${t("Dating it to another year leaves these times as they are.")}`}
+        <p className="flex items-center gap-1 text-xs text-pretty text-muted">
+          <span>
+            {t("Written {when}", { when: formatRecorded(note.created) })}
+            {note.edited !== note.created ? ` · ${t("Last edited {when}", { when: formatRecorded(note.edited) })}` : ""}.
+          </span>
+          {form.type === "draft" ? null : (
+            <InfoButton title={t("Times")} text={t("Dating it to another year leaves these times as they are.")} />
+          )}
         </p>
 
         <div className="mt-2 flex items-center justify-between gap-3 border-t border-border pt-4">
@@ -771,6 +785,8 @@ function MediaFields({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [address, setAddress] = useState("");
+  const picture = useStoredSrc(image);
+  const clip = useStoredSrc(video);
 
   async function pick(file: File | undefined) {
     if (!file) return;
@@ -823,7 +839,13 @@ function MediaFields({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-fg">{t("Picture or clip")}</p>
+        <div className="flex items-center gap-1">
+          <p className="text-sm font-medium text-fg">{t("Picture or clip")}</p>
+          <InfoButton
+            title={t("Picture or clip")}
+            text={t("A large picture or clip is shrunk before it is kept. A clip longer than twenty seconds keeps only the start. Fetching keeps the address, and the file when the site allows it.")}
+          />
+        </div>
         <button type="button" className="text-sm font-semibold text-primary disabled:opacity-40" disabled={busy} onClick={() => input.current?.click()}>
           {busy ? t("Working…") : t("Attach")}
         </button>
@@ -835,17 +857,17 @@ function MediaFields({
         </button>
       </div>
       <input ref={input} type="file" accept="image/*,video/*" className="hidden" onChange={(event) => void pick(event.target.files?.[0])} />
-      {image ? (
+      {picture ? (
         <div>
-          <img src={image} alt="" className="max-h-40 w-full rounded-xl object-cover" />
+          <img src={picture} alt="" className="max-h-40 w-full rounded-xl object-cover" />
           <button type="button" className="mt-1 text-xs font-semibold text-muted" onClick={() => onChange({ image: "", imageFacts: {} })}>
             {t("Remove picture")}
           </button>
         </div>
       ) : null}
-      {video ? (
+      {clip ? (
         <div>
-          <video src={video} controls playsInline className="max-h-48 w-full rounded-xl bg-bg" />
+          <video src={clip} controls playsInline className="max-h-48 w-full rounded-xl bg-bg" />
           <button type="button" className="mt-1 text-xs font-semibold text-muted" onClick={() => onChange({ video: "", videoFacts: {} })}>
             {t("Remove clip")}
           </button>
@@ -854,7 +876,6 @@ function MediaFields({
       {showPicture ? <FactFields title={t("Picture")} facts={imageFacts} clip={false} onChange={(imageFacts) => onChange({ imageFacts })} /> : null}
       {showClip ? <FactFields title={t("Clip")} facts={videoFacts} clip onChange={(videoFacts) => onChange({ videoFacts })} /> : null}
       {error ? <p className="text-sm text-muted">{error}</p> : null}
-      <p className="text-xs text-pretty text-muted">{t("A large picture or clip is shrunk before it is kept. A clip longer than twenty seconds keeps only the start. Fetching keeps the address, and the file when the site allows it.")}</p>
     </div>
   );
 }
@@ -904,6 +925,7 @@ function contentLabel(type: string) {
   if (type === "draft") return t("Draft");
   if (type === "image") return t("Caption");
   if (type === "video") return t("Caption");
+  if (type === "update") return t("Update");
   return t("Note");
 }
 
@@ -943,6 +965,7 @@ const TYPE_HINT: Record<string, string> = {
   link: "A title and an address.",
   image: "A picture. Words are optional.",
   video: "A clip. Words are optional. The length kept is the start, up to twenty seconds.",
+  update: "News of a change in TLNotes. Added for you. Not a type you can choose.",
   quotation: "The words, the language, and a source if you have one.",
   page: "A MyST page. Titles are its names, and links are its relations.",
   headword: "One word in the lexicon. The title is the headword.",
@@ -1017,6 +1040,7 @@ function DateFields({
   month,
   day,
   names = { year: "year", month: "month", day: "day" },
+  hint,
   onChange,
 }: {
   label: string;
@@ -1024,11 +1048,15 @@ function DateFields({
   month: string;
   day: string;
   names?: { year: "year" | "beginYear" | "endYear"; month: "month" | "beginMonth" | "endMonth"; day: "day" | "beginDay" | "endDay" };
+  hint?: string;
   onChange: (partial: Partial<FormState>) => void;
 }) {
   return (
     <fieldset>
-      <legend className="text-sm font-medium text-fg">{label}</legend>
+      <legend className="flex items-center gap-1 text-sm font-medium text-fg">
+        {label}
+        {hint ? <InfoButton title={label} text={hint} /> : null}
+      </legend>
       <div className="mt-1.5 grid grid-cols-3 gap-2">
         <input
           className="field"
@@ -1095,8 +1123,10 @@ function StatementFields({ statements, onChange }: { statements: Statement[]; on
 
   return (
     <div>
-      <p className="text-sm font-medium text-fg">{t("Statements")}</p>
-      <p className="mt-1 text-sm text-pretty text-muted">{t("A property, a value, and only the qualifier and source that change the claim.")}</p>
+      <div className="flex items-center gap-1">
+        <p className="text-sm font-medium text-fg">{t("Statements")}</p>
+        <InfoButton title={t("Statements")} text={t("A property, a value, and only the qualifier and source that change the claim.")} />
+      </div>
       {statements.length > 0 && (
         <ul className="mt-2 flex flex-col gap-1.5">
           {statements.map((item) => (

@@ -177,6 +177,7 @@ const TYPE_LABEL = {
 	persona: "Persona",
 	book: "Book",
 	dream: "Dream",
+	update: "Update",
 	dict: "Dict"
 };
 const typePriority = {
@@ -194,7 +195,8 @@ const typePriority = {
 	headword: 11,
 	persona: 12,
 	book: 13,
-	note: 14
+	note: 14,
+	update: -1
 };
 export function isPageType(type) {
 	return PAGE_TYPES.includes(type);
@@ -413,7 +415,8 @@ export function buildRows(notes: Note[], now = Date.now()): TimelineRow[] {
 	return rows;
 }
 export function noteMatches(note, filters) {
-	if (!filters.types.includes(note.type)) return false;
+	const typeOk = note.type === "update" ? filters.types.length === TIMELINE_TYPES.length : filters.types.includes(note.type);
+	if (!typeOk) return false;
 	if (filters.tags.length > 0 && !filters.tags.every((tag) => note.tags.includes(tag))) return false;
 	return true;
 }
@@ -513,10 +516,12 @@ function normalizeNote(raw) {
 	}
 	const image = typeof record.image === "string" ? record.image.trim() : "";
 	if (image.startsWith("data:image/") && image.length < 28e4) note.image = image;
+	else if (image.startsWith("tlfile:") && image.length < 400) note.image = image;
 	else if (/^https:\/\//.test(image) && image.length < 4e3) note.image = image;
 	const video = typeof record.video === "string" ? record.video.trim() : "";
 	if (video.startsWith("data:video/") && video.length < 1_200_000) note.video = video;
 	else if (video.startsWith("data:audio/") && video.length < 1_200_000) note.video = video;
+	else if (video.startsWith("tlfile:") && video.length < 400) note.video = video;
 	else if (/^https:\/\//.test(video) && video.length < 4e3) note.video = video;
 	const imageFacts = cleanMediaFacts(record.imageFacts);
 	const videoFacts = cleanMediaFacts(record.videoFacts);
@@ -633,6 +638,7 @@ function storedPreview(value) {
 	};
 	const image = cleanText(record.image);
 	if (image.startsWith("data:image/") && image.length < 28e4) preview.image = image;
+	else if (image.startsWith("tlfile:") && image.length < 400) preview.image = image;
 	else if (/^https:\/\//.test(image) && image.length < 4e3) preview.image = image;
 	if (!preview.image && record.bare === true) preview.bare = true;
 	return preview;
@@ -754,11 +760,13 @@ export function safeHref(value) {
 }
 export function safeImage(value) {
 	if (!value) return "";
+	if (value.startsWith("tlfile:")) return value;
 	if (value.startsWith("data:image/") && value.length < 28e4) return value;
 	return safeHref(value);
 }
 export function safeVideo(value) {
 	if (!value || typeof value !== "string") return "";
+	if (value.startsWith("tlfile:")) return value;
 	if (value.startsWith("data:video/") && value.length < 1_200_000) return value;
 	if (value.startsWith("data:audio/") && value.length < 1_200_000) return value;
 	if (/^https:\/\//.test(value) && value.length < 4e3) return value;

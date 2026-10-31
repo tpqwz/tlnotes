@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   buildRows,
   getEndDate,
@@ -32,6 +32,11 @@ export function Timeline({
   onTrash,
   onToggleTag,
   onToggleDone,
+  onHold,
+  onSweep,
+  onClear,
+  picked,
+  picking,
   flat,
 }: {
   notes: Note[];
@@ -44,10 +49,148 @@ export function Timeline({
   onTrash: (id: string) => void;
   onToggleTag: (tag: string) => void;
   onToggleDone: (id: string) => void;
+  onHold?: (id: string) => void;
+  onSweep?: (id: string) => void;
+  onClear?: () => void;
+  picked?: string[];
+  picking?: boolean;
   flat?: boolean;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
+  const held = useRef(false);
+  const swept = useRef(false);
+  const pickedNow = useRef(picked);
+  pickedNow.current = picked;
   const [layout, setLayout] = useState<{ spans: Span[]; nowTop: number | null }>({ spans: [], nowTop: null });
+  function arm(id: string, event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!onHold || event.button !== 0) return;
+    held.current = false;
+    const node = event.currentTarget;
+    const pointerId = event.pointerId;
+    const move = (ev: PointerEvent) => {
+      if (!held.current || !onSweep) return;
+      const hit = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("[data-pick-id]")?.getAttribute("data-pick-id");
+      if (!hit) return;
+      swept.current = true;
+      onSweep(hit);
+    };
+    const timer = window.setTimeout(() => {
+      held.current = true;
+      onHold(id);
+      try {
+        node.setPointerCapture(pointerId);
+      } catch {
+        /* the press already ended */
+      }
+      node.addEventListener("pointermove", move);
+    }, 500);
+    const clear = () => {
+      window.clearTimeout(timer);
+      node.removeEventListener("pointermove", move);
+    };
+    event.currentTarget.addEventListener("pointerup", clear, { once: true });
+    event.currentTarget.addEventListener("pointercancel", clear, { once: true });
+  }
+
+  function openNote(id: string) {
+    if (held.current || swept.current) {
+      held.current = false;
+      swept.current = false;
+      return;
+    }
+    if (picking) {
+      if (picked?.includes(id)) onHold?.(id);
+      else onSweep?.(id);
+      return;
+    }
+    onEdit(id);
+  }
+
+  useEffect(() => {
+    if (!picking || !onSweep) return;
+    let gesture: { id: number; x: number; y: number; at: number; timer: number; armed: boolean } | null = null;
+
+    function pickAt(x: number, y: number) {
+      const id = document.elementFromPoint(x, y)?.closest("[data-pick-id]")?.getAttribute("data-pick-id");
+      if (id) onSweep?.(id);
+    }
+
+    function onDown(event: PointerEvent) {
+      if (event.button !== 0) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || target.closest(".pick-bar, #tl-composer")) return;
+      const card = target.closest("[data-pick-id]");
+      gesture = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        at: Date.now(),
+        armed: false,
+        timer: window.setTimeout(() => {
+          if (!gesture || !card) return;
+          gesture.armed = true;
+          const node = card as HTMLElement;
+          const pointerId = event.pointerId;
+          try {
+            node.setPointerCapture(pointerId);
+          } catch {
+            /* the press already ended */
+          }
+        }, 220),
+      };
+    }
+
+    function onMove(event: PointerEvent) {
+      if (!gesture || gesture.id !== event.pointerId) return;
+      const dist = Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y);
+      if (!gesture.armed) {
+        if (dist > 10) {
+          window.clearTimeout(gesture.timer);
+          gesture = null;
+        }
+        return;
+      }
+      if (dist < 8) return;
+      swept.current = true;
+      pickAt(gesture.x, gesture.y);
+      pickAt(event.clientX, event.clientY);
+    }
+
+    function onUp(event: PointerEvent) {
+      if (!gesture || gesture.id !== event.pointerId) return;
+      window.clearTimeout(gesture.timer);
+      const didSweep = swept.current;
+      const target = event.target instanceof Element ? event.target : null;
+      gesture = null;
+      if (didSweep) {
+        window.setTimeout(() => {
+          swept.current = false;
+        }, 0);
+        return;
+      }
+      if (!target || target.closest(".pick-bar, #tl-composer")) return;
+      const card = target.closest("[data-pick-id]");
+      if (card) {
+        const id = card.getAttribute("data-pick-id");
+        if (id && !pickedNow.current?.includes(id)) onSweep?.(id);
+        return;
+      }
+      onClear?.();
+    }
+
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      if (gesture) window.clearTimeout(gesture.timer);
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [onClear, onSweep, picking]);
+
   const rows = buildRows(notes);
   const layoutKey = rows
     .map((row) => (row.kind === "note" ? `${row.note.id}:${row.note.edited}:${row.note.type}` : row.key))
@@ -151,6 +294,10 @@ export function Timeline({
               onTrash={onTrash}
               onToggleTag={onToggleTag}
               onToggleDone={onToggleDone}
+              onHold={onHold}
+              onSweep={onSweep}
+              selected={picked?.includes(note.id)}
+              picking={picking}
             />
           ))
         )}
@@ -219,8 +366,10 @@ export function Timeline({
                   <button
                     type="button"
                     aria-label={`Edit the end of ${row.note.content}`}
-                    className="relative flex h-6 w-full items-center"
-                    onClick={() => onEdit(row.note.id)}
+                    className={cn("relative flex h-6 w-full items-center", picked?.includes(row.note.id) && "note-picked")}
+                    data-pick-id={row.note.id}
+                    onPointerDown={(event) => arm(row.note.id, event)}
+                    onClick={() => openNote(row.note.id)}
                   >
                     <span className="rule absolute inset-x-0 top-1/2 -translate-y-1/2" style={{ background: color }} />
                   </button>
@@ -236,8 +385,10 @@ export function Timeline({
                     type="button"
                     title={row.note.content}
                     aria-label={`Edit period: ${label}`}
-                    className="relative flex h-6 w-full items-center"
-                    onClick={() => onEdit(row.note.id)}
+                    className={cn("relative flex h-6 w-full items-center", picked?.includes(row.note.id) && "note-picked")}
+                    data-pick-id={row.note.id}
+                    onPointerDown={(event) => arm(row.note.id, event)}
+                    onClick={() => openNote(row.note.id)}
                   >
                     <span className="rule absolute inset-x-0 top-1/2 -translate-y-1/2" style={{ background: color }} />
                     <span className="relative mx-auto max-w-[75%] truncate bg-bg px-3 text-xs font-semibold tracking-wide" style={{ color }}>
@@ -257,6 +408,10 @@ export function Timeline({
                   onTrash={onTrash}
                   onToggleTag={onToggleTag}
                   onToggleDone={onToggleDone}
+                  onHold={onHold}
+              onSweep={onSweep}
+                  selected={picked?.includes(row.note.id)}
+                  picking={picking}
                 />
               </div>
             );

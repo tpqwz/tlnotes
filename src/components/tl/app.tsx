@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ClipboardEvent, type ReactNode } from "react";
 import { Eye, EyeOff, Filter, Home, ListTodo, Paperclip, Search, Settings, X } from "lucide-react";
 import { toast, Toaster } from "sonner";
-import { TIMELINE_TYPES, cleanMediaFacts, isPageType, linkFromText, noteMatches, parseImport, quotationFromText, typeLabel, type Filters, type MediaFacts, type Note } from "@/lib/tl/model";
+import { TIMELINE_TYPES, cleanMediaFacts, collectTags, isPageType, linkFromText, noteMatches, parseImport, quotationFromText, typeLabel, type Filters, type MediaFacts, type Note } from "@/lib/tl/model";
 import { compressImage, compressVideo } from "@/lib/tl/media";
 import { ingestAddress } from "@/lib/tl/watch";
 import { t, tLine } from "@/lib/tl/i18n";
 import { calendarNotes, notesToIcs, parseIcs } from "@/lib/tl/ics";
 import { readPhoneCalendar } from "@/lib/tl/phone-calendar";
 import { sampleNotes } from "@/lib/tl/sample";
+import { withUpdates } from "@/lib/tl/updates";
 import { finishIncomingShare, listenNativeShare, noteFromShare, peekIncomingShare, pullShare, shareAsTyped } from "@/lib/tl/share";
 import {
   acceptUnlocked,
@@ -28,7 +29,8 @@ import {
   type TypeSize,
 } from "@/lib/tl/storage";
 import { rememberJournal, startSync, syncDoorMode } from "@/lib/tl/sync";
-import { keepsFiles } from "@/lib/tl/native-sync";
+import { keepsFiles, nativeAndroid } from "@/lib/tl/native-sync";
+import { materializeNotes } from "@/lib/tl/file-media";
 import {
   changePassphrase,
   enrollPasskey,
@@ -52,7 +54,7 @@ import { TaskList, type TaskSort } from "@/components/tl/tasks";
 import { fillShelf } from "@/lib/tl/pictures";
 import { blendNotes, rankNotes } from "@/lib/tl/search";
 import { chooseModel, embedStatus, scoreMeaning, subscribeEmbed, watchNotes, type SearchModel } from "@/lib/tl/embed";
-import { btnPrimary, cn } from "@/components/tl/ui";
+import { Modal, btnPrimary, cn } from "@/components/tl/ui";
 
 type View = "timeline" | "settings" | "trash";
 const noMeaning = new Map<string, number>();
@@ -90,6 +92,9 @@ export function TimelineApp() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pickedNotes, setPickedNotes] = useState<string[]>([]);
+  const [tagMany, setTagMany] = useState(false);
+  const [tagDraft, setTagDraft] = useState("");
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -120,6 +125,8 @@ export function TimelineApp() {
   const taskModeRef = useRef(false);
   const addTypedRef = useRef<(content: string, forcedType?: string | null) => void>(() => {});
   const overlayRef = useRef({ search: false, filter: false, edit: false, jump: false, confirm: false });
+  const pickedRef = useRef<string[]>([]);
+  pickedRef.current = pickedNotes;
   taskModeRef.current = taskMode;
   overlayRef.current = {
     search: searchOpen,
@@ -169,15 +176,16 @@ export function TimelineApp() {
       const windowReachesScreen = (window.screenY || 0) + inner >= height - 4;
       const overSystemBar = visibleReachesWindow && windowReachesScreen ? usableSystem : 0;
       const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } }).Capacitor;
-      const nativeAndroid = cap?.isNativePlatform?.() === true && cap.getPlatform?.() === "android";
-      if (nativeAndroid) document.documentElement.dataset.native = "android";
+      const onAndroid = cap?.isNativePlatform?.() === true && cap.getPlatform?.() === "android";
+      if (onAndroid) document.documentElement.dataset.native = "android";
       else delete document.documentElement.dataset.native;
       const injected = Number.parseFloat(getComputedStyle(root).getPropertyValue("--safe-area-inset-bottom")) || 0;
       const inset = Math.max(safe, injected);
       const vvBottom = (next?.offsetTop ?? 0) + (next?.height ?? inner);
-      const alreadyClear = Math.max(0, Math.round(height - top - (window.screenY || 0) - vvBottom));
-      const covered = Math.max(0, Math.round(inset - alreadyClear));
-      const obstruction = nativeAndroid ? covered : Math.max(safe, overSystemBar);
+      const bottomGap = Math.max(0, Math.round(height - (window.screenY || 0) - vvBottom));
+      const want = Math.max(inset, bottomGap < 8 ? usableSystem : 0);
+      const covered = Math.max(0, Math.round(want - bottomGap));
+      const obstruction = nativeAndroid() ? covered : Math.max(safe, overSystemBar);
       root.style.setProperty("--obstruction", `${obstruction}px`);
       const frame = document.querySelector(".app-frame");
       const header = document.getElementById("tl-header");
@@ -231,11 +239,12 @@ export function TimelineApp() {
         return;
       }
       const loaded = opened.data;
+      let changed = false;
       if (opened.missing) {
         toast.error(t("The stored notes did not load. Free some space and open TLNotes again, or restore a backup. Adding a note now starts a new journal."));
       } else if (!opened.hadStore && loaded.notes.length === 0 && loaded.trash.length === 0) {
         loaded.notes = sampleNotes(Date.now()).filter((note) => !isPageType(note.type));
-        savePersisted(loaded, true);
+        changed = true;
       } else if (loaded.notes.some((note) => note.id === "sample-college")) {
         const owned = new Set([...loaded.notes, ...loaded.trash].map((note) => note.id));
         const extras = sampleNotes(Date.now()).filter((note) => !owned.has(note.id) && !isPageType(note.type));
@@ -245,9 +254,17 @@ export function TimelineApp() {
         );
         if (extras.length > 0 || stamped.some((note, index) => note !== loaded.notes[index])) {
           loaded.notes = stamped;
-          savePersisted(loaded, true);
+          changed = true;
         }
       }
+      if (!opened.missing && !opened.locked) {
+        const notes = withUpdates(loaded.notes, loaded.trash);
+        if (notes !== loaded.notes) {
+          loaded.notes = notes;
+          changed = true;
+        }
+      }
+      if (changed) savePersisted(loaded, true);
       dataRef.current = loaded;
       setData(loaded);
       rememberJournal(loaded.notes, loaded.trash, journalRemoved());
@@ -333,6 +350,11 @@ export function TimelineApp() {
       history.pushState({ ...base, tl: trailNow(), tlReady: true, tlFloor: false, tlGuard: true }, "");
     }
     function dismissOverlay() {
+      if (pickedRef.current.length > 0) {
+        setPickedNotes([]);
+        setTagMany(false);
+        return true;
+      }
       const overlay = overlayRef.current;
       if (overlay.confirm) {
         setConfirm(null);
@@ -396,6 +418,23 @@ export function TimelineApp() {
       history.pushState({ ...floor, tlFloor: false }, "");
     }
     return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  useEffect(() => {
+    if (!nativeAndroid()) return;
+    let handle: { remove: () => Promise<void> } | undefined;
+    let stop = false;
+    void import("@capacitor/app").then(async ({ App }) => {
+      const next = await App.addListener("backButton", () => {
+        window.history.back();
+      });
+      if (stop) void next.remove();
+      else handle = next;
+    });
+    return () => {
+      stop = true;
+      void handle?.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -596,7 +635,8 @@ export function TimelineApp() {
     const quoted = asTask || linked || !text || (forcedType && forcedType !== "quotation") ? null : quotationFromText(text);
     const loneVideo = Boolean(video) && !text && !forcedType;
     const loneImage = Boolean(image) && !video && !text && !forcedType;
-    const type = loneVideo ? "video" : loneImage ? "image" : forcedType || (asTask ? "task" : linked ? "link" : quoted ? "quotation" : "draft");
+    const chosen = loneVideo ? "video" : loneImage ? "image" : forcedType || (asTask ? "task" : linked ? "link" : quoted ? "quotation" : "draft");
+    const type = chosen === "update" ? "draft" : chosen;
     const note: Note = {
       id: crypto.randomUUID(),
       type,
@@ -806,6 +846,66 @@ export function TimelineApp() {
     });
   }
 
+  function sweepNote(id: string) {
+    setPickedNotes((current) => (current.includes(id) ? current : [...current, id]));
+  }
+
+  function holdNote(id: string) {
+    setPickedNotes((current) => {
+      if (current.length === 0) return [id];
+      return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+    });
+  }
+
+  async function copyPicked() {
+    const current = dataRef.current;
+    if (!current || pickedNotes.length === 0) return;
+    const ids = new Set(pickedNotes);
+    const text = current.notes
+      .filter((note) => ids.has(note.id))
+      .map((note) => {
+        const words = note.content.trim();
+        const address = note.url?.trim();
+        return address && !words.includes(address) ? [words, address].filter(Boolean).join("\n") : words;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(t("Copied"));
+    } catch {
+      toast.error(t("Could not copy"));
+    }
+  }
+
+  function trashPicked() {
+    const current = dataRef.current;
+    if (!current || pickedNotes.length === 0) return;
+    const ids = new Set(pickedNotes);
+    const gone = current.notes.filter((note) => ids.has(note.id)).map((note) => ({ ...note, trashedAt: Date.now() }));
+    patch({
+      notes: current.notes.filter((note) => !ids.has(note.id)),
+      trash: [...gone, ...current.trash],
+    });
+    setPickedNotes([]);
+    toast.success(gone.length === 1 ? t("Moved to trash") : t("Moved {n} to trash", { n: gone.length }));
+  }
+
+  function tagPicked(tag: string) {
+    const next = tag.trim();
+    const current = dataRef.current;
+    if (!next || !current || pickedNotes.length === 0) return;
+    const ids = new Set(pickedNotes);
+    patch({
+      notes: current.notes.map((note) => (ids.has(note.id) && !note.tags.includes(next) ? { ...note, tags: [...note.tags, next], edited: Date.now() } : note)),
+    });
+    setTagDraft("");
+    setTagMany(false);
+    setPickedNotes([]);
+    toast.success(t("Tagged"));
+  }
+
   function trashNote(id: string) {
     const current = dataRef.current;
     if (!current) return;
@@ -920,7 +1020,7 @@ export function TimelineApp() {
   async function exportJson() {
     const current = dataRef.current;
     if (!current) return;
-    const result = await downloadJson(exportFilename(), exportPayload(current.notes, current.trash));
+    const result = await downloadJson(exportFilename(), exportPayload(await materializeNotes(current.notes), await materializeNotes(current.trash)));
     if (result === "saved") toast.success(t("Exported"));
     else if (result === "blocked") toast.error(t("The browser blocked the save window. Open TLNotes in its own tab and export again."));
   }
@@ -1034,12 +1134,13 @@ export function TimelineApp() {
   const editing = data?.notes.find((note) => note.id === editingId) ?? null;
   const filtersActive = !filtersAreDefault(filters);
   const visible = data ? data.notes.filter((note) => !isPageType(note.type) && noteMatches(note, filters)) : [];
+  const taskNotes = data ? data.notes.filter((note) => note.type === "task") : [];
   const corpusKey = `${view}:${taskMode}:${filters.types.join(",")}:${filters.tags.join(",")}:${data?.notes.map((note) => `${note.id}:${note.edited}`).join("|") ?? ""}:${data?.trash.map((note) => note.id).join("|") ?? ""}`;
   const searchCorpus = useMemo(() => {
     if (!data) return [];
     if (view === "trash") return data.trash;
     if (view === "settings") return [];
-    return taskMode ? visible.filter((note) => note.type === "task") : visible;
+    return taskMode ? taskNotes : visible;
   }, [corpusKey]);
   const listed = useMemo(() => {
     const query = filters.search.trim();
@@ -1161,6 +1262,11 @@ export function TimelineApp() {
     const settings = dataRef.current?.settings;
     if (!settings) return;
     const next = await acceptUnlocked(notes, settings);
+    const withNews = withUpdates(next.notes, next.trash);
+    if (withNews !== next.notes) {
+      next.notes = withNews;
+      savePersisted(next, true);
+    }
     applyType(next.settings);
     dataRef.current = next;
     setData(next);
@@ -1496,6 +1602,28 @@ export function TimelineApp() {
               onDelete={deleteForever}
             />
             </div>
+          ) : taskMode ? (
+            <div className="pt-2">
+              <TaskList
+                notes={taskNotes}
+                tasksHidden={false}
+                query={filters.search}
+                flashId={flashId}
+                showDone={showDone}
+                picked={taskTags}
+                sort={taskSort}
+                onPicked={setTaskTags}
+                onShowDone={setShowDone}
+                onEdit={setEditingId}
+                onTrash={trashNote}
+                onToggleDone={toggleDone}
+                onArrange={arrangeTasks}
+                onMoved={glow}
+                rightHanded={data.settings.rightHanded}
+                toolbar={data.settings.toolbar}
+                onShowTasks={() => undefined}
+              />
+            </div>
           ) : data.notes.length === 0 ? (
             <div className="pt-10">
               <h2 className="font-display text-3xl text-balance text-fg">{t("No notes yet")}</h2>
@@ -1542,37 +1670,17 @@ export function TimelineApp() {
                   showPeriodHint={false}
                   flat
                   onEdit={setEditingId}
+                  onHold={holdNote}
+                  onSweep={sweepNote}
+                  onClear={() => setPickedNotes([])}
+                  picked={pickedNotes}
+                  picking={pickedNotes.length > 0}
                   onTrash={trashNote}
                   onToggleDone={toggleDone}
                   onToggleTag={(tag) =>
                     setFilters((current) => ({
                       ...current,
                       tags: current.tags.includes(tag) ? current.tags.filter((item) => item !== tag) : [...current.tags, tag],
-                    }))
-                  }
-                />
-              ) : taskMode ? (
-                <TaskList
-                  notes={visible}
-                  tasksHidden={!filters.types.includes("task")}
-                  query={filters.search}
-                  flashId={flashId}
-                  showDone={showDone}
-                  picked={taskTags}
-                  sort={taskSort}
-                  onPicked={setTaskTags}
-                  onShowDone={setShowDone}
-                  onEdit={setEditingId}
-                  onTrash={trashNote}
-                  onToggleDone={toggleDone}
-                  onArrange={arrangeTasks}
-                  onMoved={glow}
-                  rightHanded={data.settings.rightHanded}
-                  toolbar={data.settings.toolbar}
-                  onShowTasks={() =>
-                    setFilters((current) => ({
-                      ...current,
-                      types: current.types.includes("task") ? current.types : [...current.types, "task"],
                     }))
                   }
                 />
@@ -1585,6 +1693,11 @@ export function TimelineApp() {
                   rightHanded={data.settings.rightHanded}
                   showPeriodHint={!hasPeriod && !filtersActive}
                   onEdit={setEditingId}
+                  onHold={holdNote}
+                  onSweep={sweepNote}
+                  onClear={() => setPickedNotes([])}
+                  picked={pickedNotes}
+                  picking={pickedNotes.length > 0}
                   onTrash={trashNote}
                   onToggleDone={toggleDone}
                   onToggleTag={(tag) =>
@@ -1610,6 +1723,25 @@ export function TimelineApp() {
           </div>
         )}
       </div>
+      {!locked && pickedNotes.length > 0 && (
+        <div className="pick-bar relative z-10 mx-auto flex w-full max-w-3xl items-center justify-between gap-2 bg-surface px-3 py-2">
+          <span className="text-sm font-semibold text-fg">{t("{n} selected", { n: pickedNotes.length })}</span>
+          <div className="flex gap-2">
+            <button type="button" className="text-sm font-semibold text-primary" onClick={() => void copyPicked()}>
+              {t("Copy")}
+            </button>
+            <button type="button" className="text-sm font-semibold text-primary" onClick={() => setTagMany(true)}>
+              {t("Tag")}
+            </button>
+            <button type="button" className="text-sm font-semibold text-fg" onClick={trashPicked}>
+              {t("Trash")}
+            </button>
+            <button type="button" className="text-sm font-semibold text-muted" onClick={() => setPickedNotes([])}>
+              {t("Done")}
+            </button>
+          </div>
+        </div>
+      )}
       {!locked && (
       <form
         id="tl-composer"
@@ -1726,6 +1858,34 @@ export function TimelineApp() {
       />
       <JumpDialog open={jumpOpen} place={place} index={jumpIndex} onClose={() => setJumpOpen(false)} onJump={jumpTo} />
       <ConfirmDialog state={confirm} onCancel={() => setConfirm(null)} />
+      <Modal open={tagMany} onOpenChange={setTagMany} title={t("Tag")} info={t("The tag is added to every selected note. Tags they already have stay.")}>
+        <div className="flex gap-2">
+          <input
+            className="field"
+            value={tagDraft}
+            placeholder={t("A new tag")}
+            onChange={(event) => setTagDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                tagPicked(tagDraft);
+              }
+            }}
+          />
+          <button type="button" className={btnPrimary} onClick={() => tagPicked(tagDraft)}>
+            {t("Add")}
+          </button>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {collectTags(data?.notes ?? [])
+            .filter((tag) => tagDraft.trim() === "" || tag.toLowerCase().includes(tagDraft.trim().toLowerCase()))
+            .map((tag) => (
+              <button key={tag} type="button" className="rounded-full border border-border px-2.5 py-1 text-xs text-fg" onClick={() => tagPicked(tag)}>
+                {tag}
+              </button>
+            ))}
+        </div>
+      </Modal>
     </div>
   );
 }

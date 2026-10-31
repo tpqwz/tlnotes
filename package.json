@@ -29,6 +29,7 @@
     "@capacitor/calendar": "^1.0.1",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
     "@capgo/capacitor-share-target": "^8.0.63",
     "@electric-sql/pglite": "^0.5.4",
     "@hookform/resolvers": "^5.7.0",

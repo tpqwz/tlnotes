@@ -6,6 +6,7 @@ import { isVaultOn, noteVault, openSealed, restoreSession, sealAll, sessionKey }
 import { applyLanguage, cleanLanguageSetting } from "@/lib/tl/language";
 import { rememberJournal } from "@/lib/tl/sync";
 import { NativeSync, keepsFiles, nativeAndroid } from "@/lib/tl/native-sync";
+import { parkNotes, materializeNotes } from "@/lib/tl/file-media";
 
 const KEY = "tlnotes.v1";
 const CENSUS = "tlnotes.census";
@@ -568,11 +569,20 @@ function rememberBody(notes: Note[], trash: Note[]) {
 }
 
 async function flush() {
-  const data = queued;
-  if (!data || backend !== "idb") return;
+  const incoming = queued;
+  if (!incoming || backend !== "idb") return;
   queued = null;
   const replacing = replaceNext;
   replaceNext = false;
+  const parked = keepsFiles() && !isVaultOn();
+  const data = parked ? { ...incoming, notes: await parkNotes(incoming.notes), trash: await parkNotes(incoming.trash) } : incoming;
+  if (parked) {
+    try {
+      keepJournalLocal(data, replacing);
+    } catch {
+      /* the journal itself is in IndexedDB */
+    }
+  }
   const body = journalFingerprint(canonicalNotes(data.notes, data.trash));
   const notesChanged = body !== savedBody;
   try {
@@ -586,7 +596,8 @@ async function flush() {
     savedBody = body;
     if (notesChanged) {
       markCensus(data.notes.length + data.trash.length);
-      rememberJournal(data.notes, data.trash, removed);
+      const shared = parked ? { notes: await materializeNotes(data.notes), trash: await materializeNotes(data.trash) } : data;
+      rememberJournal(shared.notes, shared.trash, removed);
     }
     warned = false;
     blocked = false;
@@ -622,7 +633,7 @@ export function savePersisted(data: Persisted, quiet = false, replace = false) {
     return;
   }
   try {
-    keepJournalLocal(next, replace);
+    if (!keepsFiles() || isVaultOn()) keepJournalLocal(next, replace);
   } catch {
     /* the journal itself is in IndexedDB */
   }

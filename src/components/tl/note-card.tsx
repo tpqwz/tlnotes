@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Check, MoreVertical, Pencil, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatRecorded, formatSource, kindOf, mediaLine, quotationFaces, safeColor, safeHref, safeImage, safeVideo, typeLabel, type Note } from "@/lib/tl/model";
+import { shownFile } from "@/lib/tl/file-media";
 import { languageName } from "@/lib/tl/language";
 import { otherTitles } from "@/lib/tl/wiki";
 import { mystHtml } from "@/lib/tl/myst";
@@ -10,6 +11,24 @@ import { shareQuotation, onMobile } from "@/lib/tl/share";
 import { t } from "@/lib/tl/i18n";
 import { cn, Highlight } from "@/components/tl/ui";
 const TIMELINE_LIMIT = 480;
+
+export function useStoredSrc(value: string) {
+  const [src, setSrc] = useState(value.startsWith("tlfile:") ? "" : value);
+  useEffect(() => {
+    if (!value.startsWith("tlfile:")) {
+      setSrc(value);
+      return;
+    }
+    let stop = false;
+    void shownFile(value).then((url) => {
+      if (!stop) setSrc(url);
+    });
+    return () => {
+      stop = true;
+    };
+  }, [value]);
+  return src;
+}
 
 function clip(text: string) {
   if (text.length <= TIMELINE_LIMIT) return text;
@@ -29,6 +48,10 @@ export function NoteCard({
   onTrash,
   onToggleTag,
   onToggleDone,
+  onHold,
+  onSweep,
+  selected,
+  picking,
 }: {
   note: Note;
   query: string;
@@ -39,6 +62,10 @@ export function NoteCard({
   onTrash: (id: string) => void;
   onToggleTag: (tag: string) => void;
   onToggleDone?: (id: string) => void;
+  onHold?: (id: string) => void;
+  onSweep?: (id: string) => void;
+  selected?: boolean;
+  picking?: boolean;
 }) {
   const [revealed, setRevealed] = useState(false);
   const [linkMenu, setLinkMenu] = useState<{ href: string; left: number; top: number } | null>(null);
@@ -49,6 +76,9 @@ export function NoteCard({
   const longPressed = useRef(false);
   const lastTap = useRef(0);
   const color = note.type === "period" ? safeColor(note.color) : null;
+  const picture = useStoredSrc(safeImage(note.image));
+  const clipSrc = useStoredSrc(safeVideo(note.video));
+  const previewImage = useStoredSrc(note.preview?.image ?? "");
   const recorded =
     note.edited !== note.created
       ? `Last edited ${formatRecorded(note.edited)}. Written ${formatRecorded(note.created)}.`
@@ -141,14 +171,16 @@ export function NoteCard({
       </div>
       <div
         data-kind={note.type}
+        data-pick-id={note.id}
         className={cn(
           "relative flex gap-1 bg-surface py-3 pr-1 pl-3 lift",
           flash && "note-flash",
-          revealed && "-translate-x-28",
+          revealed && !picking && "-translate-x-28",
+          selected && "note-picked",
         )}
         style={{
           transition: "transform 160ms ease-out",
-          boxShadow: color ? `inset 3px 0 0 ${color}, var(--shadow-border)` : undefined,
+          boxShadow: color && !selected ? `inset 3px 0 0 ${color}, var(--shadow-border)` : undefined,
           touchAction: "pan-y",
         }}
         onPointerDown={(event) => {
@@ -158,17 +190,35 @@ export function NoteCard({
           moved.current = 0;
           longPressed.current = false;
           clearPress();
-          if (holdToMove || event.pointerType !== "touch") return;
+          if (holdToMove || (!onHold && event.pointerType !== "touch")) return;
+          if (picking) return;
+          const node = event.currentTarget as HTMLElement;
+          const pointerId = event.pointerId;
           pressTimer.current = window.setTimeout(() => {
             longPressed.current = true;
-            onEdit(note.id);
-          }, 650);
+            if (onHold) onHold(note.id);
+            else onEdit(note.id);
+            try {
+              node.style.touchAction = "none";
+              node.setPointerCapture(pointerId);
+            } catch {
+              /* the press already ended */
+            }
+            requestAnimationFrame(() => {
+              node.style.touchAction = "none";
+            });
+          }, 500);
         }}
         onPointerMove={(event) => {
           if (!start.current || start.current.pointerId !== event.pointerId) return;
           const dx = event.clientX - start.current.x;
           const dy = event.clientY - start.current.y;
           moved.current = Math.max(moved.current, Math.hypot(dx, dy));
+          if (longPressed.current && onSweep) {
+            const id = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-pick-id]")?.getAttribute("data-pick-id");
+            if (id) onSweep(id);
+            return;
+          }
           if (moved.current > 10) clearPress();
         }}
         onPointerUp={(event) => {
@@ -178,11 +228,16 @@ export function NoteCard({
             start.current = null;
             return;
           }
+          if (longPressed.current) {
+            start.current = null;
+            return;
+          }
           const dx = event.clientX - start.current.x;
           const dy = event.clientY - start.current.y;
           const horizontal = Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2;
-          if (horizontal) setRevealed(dx < 0);
-          else if (!longPressed.current && event.pointerType === "touch" && moved.current < 8) {
+          if (horizontal && !picking) setRevealed(dx < 0);
+          else if (picking && !longPressed.current && moved.current < 8 && selected && onHold && Date.now() - start.current.at < 500) onHold(note.id);
+          else if (!picking && !longPressed.current && event.pointerType === "touch" && moved.current < 8) {
             const now = Date.now();
             if (now - lastTap.current < 300) {
               lastTap.current = 0;
@@ -198,25 +253,29 @@ export function NoteCard({
           start.current = null;
         }}
         onDoubleClick={(event) => {
-          if ((event.target as HTMLElement).closest("[data-no-press]")) return;
+          if (picking || (event.target as HTMLElement).closest("[data-no-press]")) return;
           onEdit(note.id);
         }}
         onClick={() => {
           if (revealed) setRevealed(false);
         }}
+        onContextMenu={(event) => {
+          if ((event.target as HTMLElement).closest("[data-no-press]")) return;
+          event.preventDefault();
+        }}
       >
         <div className="min-w-0 flex-1">
           <div className={cn(note.type === "quotation" && "min-h-11 pr-11")}>
-          {safeImage(note.image) && (
-            <img src={safeImage(note.image)} alt="" className="mb-3 max-h-40 w-full rounded-xl object-cover" />
+          {picture && (
+            <img src={picture} alt="" className="mb-3 max-h-40 w-full rounded-xl object-cover" />
           )}
           <MediaFactsLine facts={note.imageFacts} />
-          {safeVideo(note.video) && (
+          {clipSrc && (
             <div className="mb-3" data-no-press>
-              {safeVideo(note.video).startsWith("data:audio/") ? (
-                <audio src={safeVideo(note.video)} controls preload="metadata" className="w-full" />
+              {note.video?.startsWith("data:audio/") || note.video?.endsWith(".m4a") ? (
+                <audio src={clipSrc} controls preload="metadata" className="w-full" />
               ) : (
-                <video src={safeVideo(note.video)} controls playsInline preload="metadata" className="max-h-48 w-full rounded-xl bg-bg" />
+                <video src={clipSrc} controls playsInline preload="metadata" className="max-h-48 w-full rounded-xl bg-bg" />
               )}
             </div>
           )}
@@ -304,9 +363,9 @@ export function NoteCard({
                   }}
                   onPointerDown={(event) => holdLink(event, safeHref(note.url ?? ""))}
                 >
-                  {note.preview?.image && (
+                  {previewImage && (
                     <img
-                      src={note.preview.image}
+                      src={previewImage}
                       alt=""
                       draggable={false}
                       className="h-14 w-24 shrink-0 rounded-md object-cover"
@@ -374,7 +433,7 @@ export function NoteCard({
           )}
           </div>
           {!plain && (
-          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 pr-6">
+          <div className="card-foot mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
               {note.tags.length === 0 ? (
                 <span className="text-xs text-muted tabular-nums" title={recorded}>
                   {formatRecorded(note.edited)}

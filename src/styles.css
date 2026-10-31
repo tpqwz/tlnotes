@@ -752,7 +752,8 @@ html[data-theme="brutal"] .lift {
 }
 
 .task-list,
-.task-list * {
+.task-list *,
+div.lift[data-kind] {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -1612,7 +1613,7 @@ textarea.field {
 }
 
 html[data-native="android"] .composer {
-  padding-bottom: max(0.5rem, var(--obstruction, 0px));
+  padding-bottom: calc(0.5rem + var(--obstruction, 0px));
 }
 
 .settings-page {
@@ -1775,8 +1776,25 @@ mark.hit {
   }
 }
 
+.card-foot {
+  margin-right: -3.25rem;
+  padding-top: 0.5rem;
+  padding-right: 3.5rem;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
 .note-flash {
   animation: note-in 2s ease-out;
+}
+
+html div.lift[data-kind].note-picked {
+  background-color: color-mix(in srgb, var(--color-primary) 17%, var(--color-surface));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-primary) 50%, transparent), var(--shadow-border);
+}
+
+.note-picked,
+.pick-bar {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-primary) 50%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

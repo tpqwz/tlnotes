@@ -110,7 +110,7 @@ export function SettingsView({
   const pwa = useSyncExternalStore(subscribePwa, getPwaSnapshot, getPwaSnapshot);
   const sync = useSyncExternalStore(subscribeSync, syncSnapshot, syncSnapshot);
   const embed = useSyncExternalStore(subscribeEmbed, embedStatus, embedStatus);
-  const showSync = nativeSync();
+  const showSync = nativeAndroid();
   const showShare = nativeApp();
   const android = nativeAndroid();
   const phone = nativeSync();
@@ -655,7 +655,7 @@ function pictureStats(notes: Note[]) {
   let bytes = 0;
   for (const note of notes) {
     for (const file of [note.image, note.preview?.image, note.video]) {
-      if (!file?.startsWith("data:image/") && !file?.startsWith("data:video/")) continue;
+      if (!file?.startsWith("data:") && !file?.startsWith("tlfile:")) continue;
       count += 1;
       bytes += file.length;
     }
