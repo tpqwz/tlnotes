@@ -1297,7 +1297,7 @@ export function TimelineApp() {
           },
         }}
       />
-      <header id="tl-header" className="top-safe mx-auto flex w-full max-w-3xl shrink-0 items-center justify-between gap-3 bg-bg pb-2">
+      <header id="tl-header" className="top-safe mx-auto flex w-full max-w-[52rem] shrink-0 items-center justify-between gap-3 bg-bg pb-2">
         <h1 ref={trailRef} className="flex min-w-0 items-baseline gap-2 overflow-hidden font-display text-2xl leading-none text-fg">
           <button type="button" data-mark="" aria-label={t("TLNotes")} className="shrink-0 text-xs font-semibold tracking-widest text-muted uppercase hover:text-primary" onClick={goPresent}>
             {compactMark ? "TLN" : "TLNotes"}
@@ -1325,7 +1325,7 @@ export function TimelineApp() {
         )}
       </header>
       {searchOpen && (
-        <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pb-2">
+        <div className="mx-auto w-full max-w-[52rem] shrink-0 px-4 pb-2">
           <div className="flex items-center gap-2 rounded-full bg-surface px-3 lift">
             <Search className="size-4 shrink-0 text-muted" />
             <input
@@ -1403,12 +1403,17 @@ export function TimelineApp() {
           )}
         </div>
       )}
-      <div className="relative mx-auto min-h-0 w-full max-w-3xl flex-1">
+      <div className="relative mx-auto min-h-0 w-full max-w-[52rem] flex-1">
         <div
           ref={scrollRef}
           className={cn(
             "h-full overflow-y-auto overscroll-contain px-4 [overflow-anchor:none]",
             data?.settings.toolbar === "strip" && "pb-12",
+            data?.settings.toolbar === "float" &&
+              data.settings.scopeCollapsed &&
+              view === "timeline" &&
+              !taskMode &&
+              (data.settings.rightHanded ? "pr-16" : "pl-16"),
           )}
           data-timeline-scroll
           onScroll={(event) => {
@@ -1726,7 +1731,7 @@ export function TimelineApp() {
         )}
       </div>
       {!locked && pickedNotes.length > 0 && (
-        <div className="pick-bar relative z-10 mx-auto flex w-full max-w-3xl items-center justify-between gap-2 bg-surface px-3 py-2">
+        <div className="pick-bar relative z-10 mx-auto flex w-full max-w-[52rem] items-center justify-between gap-2 bg-surface px-3 py-2">
           <span className="text-sm font-semibold text-fg">{t("{n} selected", { n: pickedNotes.length })}</span>
           <div className="flex gap-2">
             <button type="button" className="text-sm font-semibold text-primary" onClick={() => void copyPicked()}>
@@ -1747,7 +1752,7 @@ export function TimelineApp() {
       {!locked && (
       <form
         id="tl-composer"
-        className="composer relative z-10 mx-auto w-full max-w-3xl shrink-0 border-t border-border bg-surface px-3 pt-2"
+        className="composer relative z-10 mx-auto w-full max-w-[52rem] shrink-0 border-t border-border bg-surface px-3 pt-2"
         onSubmit={(event) => {
           event.preventDefault();
           addNote();

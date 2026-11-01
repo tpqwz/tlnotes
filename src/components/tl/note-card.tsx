@@ -69,9 +69,11 @@ export function NoteCard({
 }) {
   const [revealed, setRevealed] = useState(false);
   const [linkMenu, setLinkMenu] = useState<{ href: string; left: number; top: number } | null>(null);
-  const start = useRef<{ x: number; y: number; pointerId: number; at: number } | null>(null);
+  const start = useRef<{ x: number; y: number; pointerId: number; at: number; area: number; firm: boolean; forceKnown: boolean } | null>(null);
   const moved = useRef(0);
   const pressTimer = useRef<number | null>(null);
+  const pressWatch = useRef<(() => void) | null>(null);
+  const pressNode = useRef<HTMLElement | null>(null);
   const linkPress = useRef<number | null>(null);
   const longPressed = useRef(false);
   const lastTap = useRef(0);
@@ -89,6 +91,52 @@ export function NoteCard({
       window.clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
+    pressWatch.current?.();
+    pressWatch.current = null;
+  }
+
+  function contactArea(event: { width: number; height: number }) {
+    if (event.width <= 1 || event.height <= 1) return 0;
+    return event.width * event.height;
+  }
+
+  function realPressure(pressure: number) {
+    return pressure > 0 && Math.abs(pressure - 0.5) > 0.04;
+  }
+
+  function firmPress(event: { pressure: number; width: number; height: number }, initialArea: number) {
+    if (realPressure(event.pressure)) return event.pressure >= 0.42;
+    const area = contactArea(event);
+    if (area >= 1100) return true;
+    return initialArea >= 64 && area >= initialArea * 1.4;
+  }
+
+  function scheduleSelection(delay: number) {
+    if (pressTimer.current != null) window.clearTimeout(pressTimer.current);
+    const node = pressNode.current;
+    const pointerId = start.current?.pointerId;
+    if (!node || pointerId == null) return;
+    const scroller = node.closest("[data-timeline-scroll]");
+    const origin = scroller instanceof HTMLElement ? scroller.scrollTop : 0;
+    pressTimer.current = window.setTimeout(() => {
+      pressTimer.current = null;
+      const current = start.current;
+      if (!current || current.pointerId !== pointerId || longPressed.current) return;
+      if (scroller instanceof HTMLElement && Math.abs(scroller.scrollTop - origin) > 2) return;
+      if (current.forceKnown && !current.firm) return;
+      longPressed.current = true;
+      if (onHold) onHold(note.id);
+      else onEdit(note.id);
+      try {
+        node.style.touchAction = "none";
+        node.setPointerCapture(pointerId);
+      } catch {
+        /* the press already ended */
+      }
+      requestAnimationFrame(() => {
+        node.style.touchAction = "none";
+      });
+    }, delay);
   }
 
   function offerLink(href: string, x: number, y: number) {
@@ -186,28 +234,32 @@ export function NoteCard({
         onPointerDown={(event) => {
           if (event.button !== 0) return;
           if ((event.target as HTMLElement).closest("[data-no-press]")) return;
-          start.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, at: Date.now() };
+          const area = contactArea(event);
+          const known = realPressure(event.pressure);
+          const firm = known ? event.pressure >= 0.42 : area >= 1100;
+          start.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, at: Date.now(), area, firm, forceKnown: known || firm };
           moved.current = 0;
           longPressed.current = false;
           clearPress();
           if (holdToMove || (!onHold && event.pointerType !== "touch")) return;
           if (picking) return;
           const node = event.currentTarget as HTMLElement;
-          const pointerId = event.pointerId;
-          pressTimer.current = window.setTimeout(() => {
-            longPressed.current = true;
-            if (onHold) onHold(note.id);
-            else onEdit(note.id);
-            try {
-              node.style.touchAction = "none";
-              node.setPointerCapture(pointerId);
-            } catch {
-              /* the press already ended */
-            }
-            requestAnimationFrame(() => {
-              node.style.touchAction = "none";
-            });
-          }, 500);
+          pressNode.current = node;
+          if (event.pointerType === "touch") {
+            const scroller = node.closest("[data-timeline-scroll]");
+            const stop = () => {
+              if (pressTimer.current != null) {
+                window.clearTimeout(pressTimer.current);
+                pressTimer.current = null;
+              }
+            };
+            scroller?.addEventListener("scroll", stop, { passive: true });
+            pressWatch.current = () => scroller?.removeEventListener("scroll", stop);
+            if (known && !firm) return;
+            scheduleSelection(firm ? 340 : 680);
+            return;
+          }
+          scheduleSelection(500);
         }}
         onPointerMove={(event) => {
           if (!start.current || start.current.pointerId !== event.pointerId) return;
@@ -219,7 +271,27 @@ export function NoteCard({
             if (id) onSweep(id);
             return;
           }
-          if (moved.current > 10) clearPress();
+          if (event.pointerType === "touch" && !picking && start.current && !longPressed.current) {
+            if (realPressure(event.pressure)) {
+              start.current.forceKnown = true;
+              start.current.firm = event.pressure >= 0.42;
+              if (start.current.firm && pressTimer.current == null) scheduleSelection(260);
+              else if (!start.current.firm && pressTimer.current != null) {
+                window.clearTimeout(pressTimer.current);
+                pressTimer.current = null;
+              }
+            } else if (firmPress(event, start.current.area)) {
+              start.current.forceKnown = true;
+              start.current.firm = true;
+              if (pressTimer.current == null) scheduleSelection(260);
+            }
+          }
+          if (Math.abs(dy) > 6 || moved.current > 8) {
+            if (pressTimer.current != null) {
+              window.clearTimeout(pressTimer.current);
+              pressTimer.current = null;
+            }
+          }
         }}
         onPointerUp={(event) => {
           clearPress();

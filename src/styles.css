@@ -1613,7 +1613,7 @@ textarea.field {
 }
 
 html[data-native="android"] .composer {
-  padding-bottom: calc(0.5rem + var(--obstruction, 0px));
+  padding-bottom: max(0.25rem, var(--obstruction, 0px));
 }
 
 .settings-page {

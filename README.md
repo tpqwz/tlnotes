@@ -1,6 +1,6 @@
 # TLNotes
 
-A private timeline. Notes stay on the device. Version **0.4.0-beta**.
+A private timeline. Notes stay on the device. Version **0.4.1-beta**.
 
 This is beta: the journal is usable, and some edges are still open. Sharing into the Android app, a signed iPhone build, and a release signature are not finished.
 
@@ -35,7 +35,7 @@ chmod +x android/gradlew
 android/gradlew -p android assembleDebug
 ```
 
-The package is `android/app/build/outputs/apk/debug/app-debug.apk`. The version on that package is `0.4.0-beta`.
+The package is `android/app/build/outputs/apk/debug/app-debug.apk`. The version on that package is `0.4.1-beta`.
 
 ## iOS
 
