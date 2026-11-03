@@ -29,7 +29,7 @@ import {
   type TypeSize,
 } from "@/lib/tl/storage";
 import { rememberJournal, startSync, syncDoorMode } from "@/lib/tl/sync";
-import { keepsFiles, nativeAndroid } from "@/lib/tl/native-sync";
+import { keepsFiles, nativeAndroid, notePictures, siteInstalled } from "@/lib/tl/native-sync";
 import { materializeNotes } from "@/lib/tl/file-media";
 import {
   changePassphrase,
@@ -298,7 +298,7 @@ export function TimelineApp() {
     };
     // A saved picture does not restart the walk. A new note does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locked, data?.settings.linkPreviews, data?.notes.map((note) => note.id).join("|")]);
+  }, [locked, data?.settings.linkPreviews, data?.settings.picturesBrowser, data?.settings.picturesSite, data?.notes.map((note) => note.id).join("|")]);
 
   useEffect(() => {
     if (!data) return;
@@ -751,7 +751,7 @@ export function TimelineApp() {
   async function attachHeld(file: File | undefined) {
     if (!file) return;
     if (!keepsFiles()) {
-      toast(t("Pictures and video stay in the Android and iOS app. This copy keeps the words."));
+      toast(t(siteInstalled() ? "Pictures are off in the installed site. Turn them on in Settings to keep one here." : "Pictures are off in the browser. Turn them on in Settings to keep one here."));
       return;
     }
     const kind = file.type || (/\.(png|jpe?g|gif|webp|bmp|avif|heic|heif)$/i.test(file.name) ? "image/" : /\.(mp4|webm|mov|m4v|mkv)$/i.test(file.name) ? "video/" : "");
@@ -1455,6 +1455,8 @@ export function TimelineApp() {
                 searchModel={data.settings.searchModel}
                 shareEdit={data.settings.shareEdit}
                 linkPreviews={data.settings.linkPreviews}
+                picturesBrowser={data.settings.picturesBrowser}
+                picturesSite={data.settings.picturesSite}
                 enterSends={data.settings.enterSends}
                 pagePackage={data.settings.pagePackage}
                 onPagePackage={(pagePackage) => {
@@ -1467,6 +1469,26 @@ export function TimelineApp() {
                   const current = dataRef.current;
                   if (!current) return;
                   commit({ ...current, settings: { ...current.settings, linkPreviews } });
+                }}
+                onPictures={(which, on) => {
+                  const current = dataRef.current;
+                  if (!current) return;
+                  const next = {
+                    ...current.settings,
+                    picturesBrowser: which === "browser" ? on : current.settings.picturesBrowser,
+                    picturesSite: which === "site" ? on : current.settings.picturesSite,
+                  };
+                  if (on) {
+                    const agreed = window.confirm(
+                      t("Pictures, including link previews, share this site's limited space with your notes. If that space fills, a new note may not be saved."),
+                    );
+                    if (!agreed) return;
+                  } else if (!next.picturesBrowser && !next.picturesSite && [...current.notes, ...current.trash].some((note) => note.image?.startsWith("data:") || note.video?.startsWith("data:") || note.preview?.image?.startsWith("data:"))) {
+                    const agreed = window.confirm(t("Pictures kept in this copy will be removed."));
+                    if (!agreed) return;
+                  }
+                  notePictures(next.picturesBrowser, next.picturesSite);
+                  commit({ ...current, settings: next });
                 }}
                 onEnterSends={(enterSends) => {
                   const current = dataRef.current;
@@ -1517,7 +1539,8 @@ export function TimelineApp() {
                 onTheme={(theme: Theme) => {
                   const current = dataRef.current;
                   if (!current) return;
-                  commit({ ...current, settings: { ...current.settings, theme } });
+                  const scheme = theme === "offside" ? "offside" : current.settings.scheme;
+                  commit({ ...current, settings: { ...current.settings, theme, scheme } });
                 }}
                 onScheme={(scheme: Scheme) => {
                   const current = dataRef.current;

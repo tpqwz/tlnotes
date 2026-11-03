@@ -1,5 +1,5 @@
 import type { Note } from "@/lib/tl/model";
-import { keepsFiles } from "@/lib/tl/native-sync";
+import { nativeApp } from "@/lib/tl/native-sync";
 
 const PREFIX = "tlfile:";
 
@@ -56,7 +56,7 @@ async function place(note: Note, slot: string, value: string | undefined, apply:
 
 /** On the installed app, picture and video bytes go to a private file. The note keeps the path. */
 export async function parkNote(note: Note): Promise<Note> {
-  if (!keepsFiles()) return note;
+  if (!nativeApp()) return note;
   let next = await place(note, "image", note.image, (copy, value) => {
     if (value) copy.image = value;
     else delete copy.image;
@@ -108,7 +108,7 @@ async function readBack(value: string | undefined) {
 
 /** A backup carries the bytes, not a path that only this phone knows. */
 export async function materializeNote(note: Note): Promise<Note> {
-  if (!keepsFiles()) return note;
+  if (!nativeApp()) return note;
   const image = await readBack(note.image);
   const video = await readBack(note.video);
   const previewImage = await readBack(note.preview?.image);

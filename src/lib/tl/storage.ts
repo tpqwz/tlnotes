@@ -5,7 +5,7 @@ import { journalMatches, readJournal, writeJournal, writeRecords, writeSettings,
 import { isVaultOn, noteVault, openSealed, restoreSession, sealAll, sessionKey } from "@/lib/tl/vault";
 import { applyLanguage, cleanLanguageSetting } from "@/lib/tl/language";
 import { rememberJournal } from "@/lib/tl/sync";
-import { NativeSync, keepsFiles, nativeAndroid } from "@/lib/tl/native-sync";
+import { NativeSync, keepsPictureBytes, nativeAndroid, nativeApp, notePictures } from "@/lib/tl/native-sync";
 import { parkNotes, materializeNotes } from "@/lib/tl/file-media";
 
 const KEY = "tlnotes.v1";
@@ -14,13 +14,13 @@ const CENSUS = "tlnotes.census";
 export type Toolbar = "float" | "strip";
 export type Face = "argon" | "neon" | "xenon" | "radon" | "krypton" | "ledger" | "sans" | "plex" | "atkinson" | "josefin";
 export type TypeSize = "smaller" | "small" | "regular" | "large" | "larger";
-export type Theme = "journal" | "plaque" | "original" | "brutal" | "deco" | "admiralty" | "chapel" | "pocket" | "dungeon" | "tavern" | "catalog" | "blueprint" | "terminal" | "broadsheet" | "motif" | "cde" | "irix" | "turbo" | "mac";
-export type Scheme = "parchment" | "original" | "night" | "press" | "deco" | "brutal" | "glass" | "classical" | "tea" | "ledger" | "admiralty" | "chapel" | "fresco" | "pocket" | "dungeon" | "tavern" | "catalog" | "blueprint" | "terminal" | "broadsheet" | "cde" | "irix" | "turbo" | "tvision" | "scp" | "scp-orange" | "scp-black" | "scp-white" | "scp-red" | "scp-grey" | "scp-yellow" | "mac";
+export type Theme = "journal" | "plaque" | "original" | "brutal" | "deco" | "admiralty" | "chapel" | "pocket" | "dungeon" | "tavern" | "catalog" | "blueprint" | "terminal" | "broadsheet" | "motif" | "cde" | "irix" | "turbo" | "mac" | "offside";
+export type Scheme = "parchment" | "original" | "night" | "press" | "deco" | "brutal" | "glass" | "classical" | "tea" | "ledger" | "admiralty" | "chapel" | "fresco" | "pocket" | "dungeon" | "tavern" | "catalog" | "blueprint" | "terminal" | "broadsheet" | "cde" | "irix" | "turbo" | "tvision" | "scp" | "scp-orange" | "scp-black" | "scp-white" | "scp-red" | "scp-grey" | "scp-yellow" | "mac" | "offside";
 
 export const FACES: Face[] = ["argon", "neon", "xenon", "radon", "krypton", "ledger", "sans", "plex", "atkinson", "josefin"];
 export const TYPE_SIZES: TypeSize[] = ["smaller", "small", "regular", "large", "larger"];
-export const THEMES: Theme[] = ["journal", "plaque", "original", "brutal", "deco", "admiralty", "chapel", "catalog", "blueprint", "terminal", "broadsheet", "motif", "cde", "irix", "pocket", "dungeon", "tavern", "turbo", "mac"];
-export const SCHEMES: Scheme[] = ["parchment", "original", "night", "press", "deco", "brutal", "glass", "classical", "tea", "ledger", "admiralty", "chapel", "fresco", "pocket", "dungeon", "tavern", "catalog", "blueprint", "terminal", "broadsheet", "cde", "irix", "turbo", "tvision", "scp", "scp-orange", "scp-black", "scp-white", "scp-red", "scp-grey", "scp-yellow", "mac"];
+export const THEMES: Theme[] = ["journal", "plaque", "original", "brutal", "deco", "admiralty", "chapel", "catalog", "blueprint", "terminal", "broadsheet", "motif", "cde", "irix", "pocket", "dungeon", "tavern", "turbo", "mac", "offside"];
+export const SCHEMES: Scheme[] = ["parchment", "original", "night", "press", "deco", "brutal", "glass", "classical", "tea", "ledger", "admiralty", "chapel", "fresco", "pocket", "dungeon", "tavern", "catalog", "blueprint", "terminal", "broadsheet", "cde", "irix", "turbo", "tvision", "scp", "scp-orange", "scp-black", "scp-white", "scp-red", "scp-grey", "scp-yellow", "mac", "offside"];
 
 export const FACE_LABEL: Record<Face, string> = {
   argon: "Argon",
@@ -92,6 +92,7 @@ export const THEME_LABEL: Record<Theme | Scheme, string> = {
   "scp-grey": "Grey",
   "scp-yellow": "Yellow",
   mac: "Classic Mac",
+  offside: "Offside",
 };
 
 export const THEME_COLOR: Record<Scheme, string> = {
@@ -127,6 +128,7 @@ export const THEME_COLOR: Record<Scheme, string> = {
   "scp-grey": "#bfcae3",
   "scp-yellow": "#bfcae3",
   mac: "#ececec",
+  offside: "#e6dcc8",
 };
 
 export const THEME_SWATCH: Record<Scheme, { bg: string; fg: string; primary: string; border: string }> = {
@@ -162,6 +164,7 @@ export const THEME_SWATCH: Record<Scheme, { bg: string; fg: string; primary: str
   "scp-grey": { bg: "#bdbdbd", fg: "#000000", primary: "#840603", border: "#ffffff" },
   "scp-yellow": { bg: "#bfcc2b", fg: "#000000", primary: "#840603", border: "#ffffff" },
   mac: { bg: "#b7c0ce", fg: "#000000", primary: "#6a6ac8", border: "#ffffff" },
+  offside: { bg: "#e6dcc8", fg: "#1a1612", primary: "#6e5324", border: "#8d7040" },
 };
 
 export type Rule = 1 | 2 | 3;
@@ -198,6 +201,10 @@ export type Settings = {
   enterSends: boolean;
   /** On Android, look at the website for a newer package. Off leaves this package as it is. */
   pagePackage: boolean;
+  /** A browser copy stores pictures and video. Off keeps the words. The installed app always stores them. */
+  picturesBrowser: boolean;
+  /** The installed site, as distinct from a browser tab. */
+  picturesSite: boolean;
 };
 
 export type Persisted = {
@@ -226,6 +233,8 @@ export const defaultSettings = (): Settings => ({
   linkPreviews: true,
   enterSends: false,
   pagePackage: false,
+  picturesBrowser: false,
+  picturesSite: false,
 });
 
 const LEGACY_LOOK: Record<string, [Theme, Scheme]> = {
@@ -275,9 +284,11 @@ export const NATIVE_SCHEME: Record<Theme, Scheme> = {
   irix: "irix",
   turbo: "turbo",
   mac: "mac",
+  offside: "offside",
 };
 
-export function applyType(settings: Pick<Settings, "face" | "typeSize"> & Partial<Pick<Settings, "language" | "theme" | "scheme" | "rule" | "linkPreviews">>) {
+export function applyType(settings: Pick<Settings, "face" | "typeSize"> & Partial<Pick<Settings, "language" | "theme" | "scheme" | "rule" | "linkPreviews" | "picturesBrowser" | "picturesSite">>) {
+  notePictures(settings.picturesBrowser === true, settings.picturesSite === true);
   if (typeof document === "undefined") {
     applyLanguage(settings.language);
     return;
@@ -296,7 +307,7 @@ export function applyType(settings: Pick<Settings, "face" | "typeSize"> & Partia
 
 /** Runs before paint so a saved face does not flash, and so Android Back has a history entry to consume. */
 export const TYPE_BOOT =
-  '(function(){try{var s=JSON.parse(localStorage.getItem("tlnotes.v1")||"{}").settings||{};var faces={argon:1,neon:1,xenon:1,radon:1,krypton:1,ledger:1,sans:1,plex:1,atkinson:1,josefin:1};var sizes={smaller:1,small:1,regular:1,large:1,larger:1};var schemes={parchment:"#f3efe6",original:"#f5f5f5",night:"#161410",press:"#f7f5f0",deco:"#1c140e",brutal:"#fffdf5",glass:"#f3ecda",classical:"#e9e2d4",tea:"#f3efe4",ledger:"#f4f7fb",admiralty:"#e4ebe6",chapel:"#1a1740",fresco:"#e6e1cf",pocket:"#9bbc0f",dungeon:"#0d0d1a",tavern:"#3a2415",catalog:"#5c5146",blueprint:"#0b3a66",terminal:"#031406",broadsheet:"#f3efe4",cde:"#3d7370",irix:"#4e74a8",turbo:"#bfcae3",tvision:"#a5a4ce",scp:"#bfcae3","scp-orange":"#bfcae3","scp-black":"#bfcae3","scp-white":"#bfcae3","scp-red":"#bfcae3","scp-grey":"#bfcae3","scp-yellow":"#bfcae3",mac:"#ececec"};var frames={journal:1,plaque:1,original:1,brutal:1,deco:1,admiralty:1,chapel:1,pocket:1,dungeon:1,tavern:1,catalog:1,blueprint:1,terminal:1,broadsheet:1,motif:1,turbo:1,mac:1};var legacy={parchment:["journal","parchment"],night:["journal","night"],press:["journal","press"],glass:["journal","glass"],classical:["journal","classical"],tea:["journal","tea"],ledger:["journal","ledger"],fresco:["journal","fresco"],cde:["motif","cde"],irix:["motif","irix"]};if(faces[s.face])document.documentElement.dataset.face=s.face;document.documentElement.dataset.size=sizes[s.typeSize]?s.typeSize:"small";if(s.rule===1||s.rule===2||s.rule===3)document.documentElement.style.setProperty("--rule",s.rule+"px");var theme=s.theme,scheme=s.scheme;if(theme==="bauhaus"||!frames[theme]){var pair=legacy[theme]||["plaque","parchment"];theme=pair[0];if(!schemes[scheme])scheme=pair[1];}if(!schemes[scheme])scheme=schemes[theme]?theme:"parchment";document.documentElement.dataset.theme=theme;document.documentElement.dataset.scheme=scheme;var m=document.querySelector(\'meta[name="theme-color"]\');if(m)m.setAttribute("content",schemes[scheme]);}catch(e){}try{if(window.parent!==window)return;function pack(extra){var base=history.state&&typeof history.state==="object"?history.state:{};return Object.assign({},base,extra,{tlReady:true,tlGuard:true});}if(!(history.state&&history.state.tlGuard))history.pushState(pack({tlFloor:false}),"");window.addEventListener("popstate",function(){var now=history.state&&typeof history.state==="object"?history.state:null;if(!now||now.tlFloor||!now.tlGuard)history.pushState(pack({tlFloor:false}),"");},true);window.addEventListener("pageshow",function(){var now=history.state&&typeof history.state==="object"?history.state:null;if(!now||!now.tlGuard)history.pushState(pack({tlFloor:false}),"");});}catch(e){}})();';
+  '(function(){try{var s=JSON.parse(localStorage.getItem("tlnotes.v1")||"{}").settings||{};var faces={argon:1,neon:1,xenon:1,radon:1,krypton:1,ledger:1,sans:1,plex:1,atkinson:1,josefin:1};var sizes={smaller:1,small:1,regular:1,large:1,larger:1};var schemes={parchment:"#f3efe6",original:"#f5f5f5",night:"#161410",press:"#f7f5f0",deco:"#1c140e",brutal:"#fffdf5",glass:"#f3ecda",classical:"#e9e2d4",tea:"#f3efe4",ledger:"#f4f7fb",admiralty:"#e4ebe6",chapel:"#1a1740",fresco:"#e6e1cf",pocket:"#9bbc0f",dungeon:"#0d0d1a",tavern:"#3a2415",catalog:"#5c5146",blueprint:"#0b3a66",terminal:"#031406",broadsheet:"#f3efe4",cde:"#3d7370",irix:"#4e74a8",turbo:"#bfcae3",tvision:"#a5a4ce",scp:"#bfcae3","scp-orange":"#bfcae3","scp-black":"#bfcae3","scp-white":"#bfcae3","scp-red":"#bfcae3","scp-grey":"#bfcae3","scp-yellow":"#bfcae3",mac:"#ececec",offside:"#e6dcc8"};var frames={journal:1,plaque:1,original:1,brutal:1,deco:1,admiralty:1,chapel:1,pocket:1,dungeon:1,tavern:1,catalog:1,blueprint:1,terminal:1,broadsheet:1,motif:1,turbo:1,mac:1,offside:1};var legacy={parchment:["journal","parchment"],night:["journal","night"],press:["journal","press"],glass:["journal","glass"],classical:["journal","classical"],tea:["journal","tea"],ledger:["journal","ledger"],fresco:["journal","fresco"],cde:["motif","cde"],irix:["motif","irix"]};if(faces[s.face])document.documentElement.dataset.face=s.face;document.documentElement.dataset.size=sizes[s.typeSize]?s.typeSize:"small";if(s.rule===1||s.rule===2||s.rule===3)document.documentElement.style.setProperty("--rule",s.rule+"px");var theme=s.theme,scheme=s.scheme;if(theme==="bauhaus"||!frames[theme]){var pair=legacy[theme]||["plaque","parchment"];theme=pair[0];if(!schemes[scheme])scheme=pair[1];}if(!schemes[scheme])scheme=schemes[theme]?theme:"parchment";document.documentElement.dataset.theme=theme;document.documentElement.dataset.scheme=scheme;var m=document.querySelector(\'meta[name="theme-color"]\');if(m)m.setAttribute("content",schemes[scheme]);}catch(e){}try{if(window.parent!==window)return;function pack(extra){var base=history.state&&typeof history.state==="object"?history.state:{};return Object.assign({},base,extra,{tlReady:true,tlGuard:true});}if(!(history.state&&history.state.tlGuard))history.pushState(pack({tlFloor:false}),"");window.addEventListener("popstate",function(){var now=history.state&&typeof history.state==="object"?history.state:null;if(!now||now.tlFloor||!now.tlGuard)history.pushState(pack({tlFloor:false}),"");},true);window.addEventListener("pageshow",function(){var now=history.state&&typeof history.state==="object"?history.state:null;if(!now||!now.tlGuard)history.pushState(pack({tlFloor:false}),"");});}catch(e){}})();';
 
 export function normalizeSettings(settings: Partial<Settings> | null | undefined): Settings {
   const face = settings?.face && FACES.includes(settings.face) ? settings.face : "argon";
@@ -323,6 +334,8 @@ export function normalizeSettings(settings: Partial<Settings> | null | undefined
     linkPreviews: settings?.linkPreviews !== false,
     enterSends: settings?.enterSends === true,
     pagePackage: settings?.pagePackage === true,
+    picturesBrowser: settings?.picturesBrowser === true || (settings?.picturesBrowser == null && (settings as { pictures?: boolean } | null | undefined)?.pictures === true),
+    picturesSite: settings?.picturesSite === true || (settings?.picturesSite == null && (settings as { pictures?: boolean } | null | undefined)?.pictures === true),
   };
 }
 
@@ -353,6 +366,8 @@ export function chooseSettings(stored: Partial<Settings> | null | undefined, loc
     linkPreviews: saved.linkPreviews === base.linkPreviews ? mirror.linkPreviews : saved.linkPreviews,
     enterSends: saved.enterSends === base.enterSends ? mirror.enterSends : saved.enterSends,
     pagePackage: saved.pagePackage === base.pagePackage ? mirror.pagePackage : saved.pagePackage,
+    picturesBrowser: saved.picturesBrowser === base.picturesBrowser ? mirror.picturesBrowser : saved.picturesBrowser,
+    picturesSite: saved.picturesSite === base.picturesSite ? mirror.picturesSite : saved.picturesSite,
   };
 }
 
@@ -426,7 +441,7 @@ export function loadPersisted(): Persisted {
 }
 
 function dropStoredFile(note: Note): Note {
-  if (keepsFiles()) return note;
+  if (keepsPictureBytes()) return note;
   let copy = note;
   if (note.image?.startsWith("data:")) {
     copy = { ...copy };
@@ -446,7 +461,7 @@ function dropStoredFile(note: Note): Note {
 }
 
 function fitCopy(data: Persisted): Persisted {
-  if (keepsFiles()) return data;
+  if (keepsPictureBytes()) return data;
   const notes = data.notes.map(dropStoredFile);
   const trash = data.trash.map(dropStoredFile);
   if (notes.every((note, index) => note === data.notes[index]) && trash.every((note, index) => note === data.trash[index])) return data;
@@ -576,7 +591,7 @@ async function flush() {
   queued = null;
   const replacing = replaceNext;
   replaceNext = false;
-  const parked = keepsFiles() && !isVaultOn();
+  const parked = nativeApp() && !isVaultOn();
   const data = parked ? { ...incoming, notes: await parkNotes(incoming.notes), trash: await parkNotes(incoming.trash) } : incoming;
   if (parked) {
     try {
@@ -619,6 +634,7 @@ export function whenSaved() {
 }
 
 export function savePersisted(data: Persisted, quiet = false, replace = false) {
+  notePictures(data.settings.picturesBrowser === true, data.settings.picturesSite === true);
   const next = fitCopy({ ...data, settings: { ...data.settings, revised: Date.now() } });
   if (!quiet) loud = true;
   if (replace) replaceNext = true;
@@ -635,7 +651,7 @@ export function savePersisted(data: Persisted, quiet = false, replace = false) {
     return;
   }
   try {
-    if (!keepsFiles() || isVaultOn()) keepJournalLocal(next, replace);
+    if (!nativeApp() || isVaultOn()) keepJournalLocal(next, replace);
   } catch {
     /* the journal itself is in IndexedDB */
   }
@@ -657,6 +673,7 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
     localStorage.getItem("tlnotes") != null ||
     localStorage.getItem("tlnotes-trash") != null;
   const local = readLocal();
+  notePictures(local?.settings.picturesBrowser === true, local?.settings.picturesSite === true);
   const census = readCensus();
   try {
     const record = await readJournal();
@@ -703,6 +720,7 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
     if (record.vault) {
       removed = record.removed;
       const settings = chooseSettings(record.settings, local?.settings);
+      notePictures(settings.picturesBrowser, settings.picturesSite);
       backend = "idb";
       if (await restoreSession()) {
         const key = sessionKey();
@@ -721,6 +739,7 @@ export async function openJournal(): Promise<{ data: Persisted; hadStore: boolea
     }
     removed = record.removed;
     const settings = chooseSettings(record.settings, local?.settings);
+    notePictures(settings.picturesBrowser, settings.picturesSite);
     let data = { ...fromRecord(record, settings), settings };
     if (local && (local.notes.length > 0 || local.trash.length > 0)) {
       const merged = mergeNotes([...data.notes, ...data.trash], [...local.notes, ...local.trash], removed);

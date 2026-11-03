@@ -17,9 +17,28 @@ export function nativeApp() {
   return cap?.isNativePlatform?.() === true;
 }
 
-/** Picture, video, and sound files are kept only in the installed app. A browser copy keeps the words and the address. */
+/** The browser tab and the installed site choose separately. Bytes stay if either one allows pictures. */
+let picturesChosen = false;
+let picturesKept = false;
+
+export function siteInstalled() {
+  if (typeof window === "undefined") return false;
+  const nav = navigator as Navigator & { standalone?: boolean };
+  if (nav.standalone === true) return true;
+  return ["standalone", "fullscreen", "window-controls-overlay"].some((mode) => window.matchMedia(`(display-mode: ${mode})`).matches);
+}
+
+export function notePictures(browser: boolean, site: boolean) {
+  picturesKept = browser || site;
+  picturesChosen = siteInstalled() ? site : browser;
+}
+
 export function keepsFiles() {
-  return nativeApp();
+  return nativeApp() || picturesChosen;
+}
+
+export function keepsPictureBytes() {
+  return nativeApp() || picturesKept;
 }
 
 /** Platforms whose shell can keep a file open. iOS and desktop join this when they have the same plugin. */

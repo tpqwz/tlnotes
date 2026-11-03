@@ -17,6 +17,7 @@ export async function fillShelf(
   for (const note of notes) {
     if (stopped()) return;
     const key = note.type === "link" ? `${note.id}:${note.url ?? ""}` : note.id;
+    if (keepsFiles() && needsPreview(note)) tried.delete(key);
     if (tried.has(key) || !needsPreview(note)) continue;
     tried.add(key);
     const preview = await previewFor(note.url ?? "");
@@ -32,8 +33,10 @@ export async function fillShelf(
 function needsPreview(note: Note) {
   if (note.type !== "link" || !note.url) return false;
   if (note.preview?.bare) return false;
+  const image = note.preview?.image ?? "";
+  if (keepsFiles() && image && !image.startsWith("data:") && !image.startsWith("tlfile:")) return true;
   if (!note.preview?.kept) return true;
-  return !note.preview.image;
+  return !image;
 }
 
 async function previewFor(url: string): Promise<LinkPreview | null> {

@@ -44,6 +44,9 @@ export function SettingsView({
   onShareEdit,
   linkPreviews,
   onLinkPreviews,
+  picturesBrowser,
+  picturesSite,
+  onPictures,
   enterSends,
   onEnterSends,
   pagePackage,
@@ -91,6 +94,9 @@ export function SettingsView({
   onShareEdit: (shareEdit: boolean) => void;
   linkPreviews: boolean;
   onLinkPreviews: (linkPreviews: boolean) => void;
+  picturesBrowser: boolean;
+  picturesSite: boolean;
+  onPictures: (which: "browser" | "site", on: boolean) => void;
   enterSends: boolean;
   onEnterSends: (enterSends: boolean) => void;
   pagePackage: boolean;
@@ -112,13 +118,14 @@ export function SettingsView({
   const embed = useSyncExternalStore(subscribeEmbed, embedStatus, embedStatus);
   const showSync = nativeAndroid();
   const showShare = nativeApp();
+  const showPictures = !nativeApp();
   const android = nativeAndroid();
   const phone = nativeSync();
   const [pageApk, setPageApk] = useState<"idle" | "checking" | "newer" | "current" | "unconfirmed">("idle");
   const [pageUrl, setPageUrl] = useState("");
-  const sections = CONTENTS.filter((item) => (item.id !== "settings-sync" || showSync) && (item.id !== "settings-sharing" || showShare));
+  const sections = CONTENTS.filter((item) => (item.id !== "settings-sync" || showSync) && (item.id !== "settings-sharing" || showShare) && (item.id !== "settings-pictures" || showPictures));
   const bytes = new Blob([JSON.stringify({ notes, trash })]).size;
-  const pictures = pictureStats([...notes, ...trash]);
+  const media = pictureStats([...notes, ...trash]);
   const room = useAllowance();
   const byType = notes.reduce<Record<string, number>>((counts, note) => {
     counts[note.type] = (counts[note.type] ?? 0) + 1;
@@ -348,12 +355,13 @@ export function SettingsView({
                 key={item}
                 type="button"
                 aria-pressed={theme === item}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold"
+                className="theme-chip"
+                data-sample={item}
                 style={{
-                  background: swatch.bg,
-                  color: swatch.fg,
-                  borderColor: theme === item ? swatch.primary : swatch.border,
-                  boxShadow: theme === item ? `inset 0 0 0 1px ${swatch.primary}` : undefined,
+                  ["--s-bg" as string]: swatch.bg,
+                  ["--s-fg" as string]: swatch.fg,
+                  ["--s-primary" as string]: swatch.primary,
+                  ["--s-border" as string]: swatch.border,
                 }}
                 onClick={() => onTheme(item)}
               >
@@ -480,6 +488,61 @@ export function SettingsView({
         </div>
       </Section>
 
+      {showPictures && (
+        <Section
+          id="settings-pictures"
+          title="Pictures"
+          about="The browser is a tab. The installed site is the home screen copy. Each can keep pictures, including link previews, or not. They share one store. If that space fills, a new note may not be saved."
+        >
+          <p className="mb-2 text-sm text-muted">{t("Browser")}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              aria-pressed={picturesBrowser}
+              className={picturesBrowser ? `${btnPrimary} justify-center px-2` : `${btnSurface} justify-center px-2`}
+              onClick={() => {
+                if (!picturesBrowser) onPictures("browser", true);
+              }}
+            >
+              {t("On")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={!picturesBrowser}
+              className={!picturesBrowser ? `${btnPrimary} justify-center px-2` : `${btnSurface} justify-center px-2`}
+              onClick={() => {
+                if (picturesBrowser) onPictures("browser", false);
+              }}
+            >
+              {t("Off")}
+            </button>
+          </div>
+          <p className="mt-3 mb-2 text-sm text-muted">{t("Installed site")}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              aria-pressed={picturesSite}
+              className={picturesSite ? `${btnPrimary} justify-center px-2` : `${btnSurface} justify-center px-2`}
+              onClick={() => {
+                if (!picturesSite) onPictures("site", true);
+              }}
+            >
+              {t("On")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={!picturesSite}
+              className={!picturesSite ? `${btnPrimary} justify-center px-2` : `${btnSurface} justify-center px-2`}
+              onClick={() => {
+                if (picturesSite) onPictures("site", false);
+              }}
+            >
+              {t("Off")}
+            </button>
+          </div>
+        </Section>
+      )}
+
       <Section
         id="settings-layout"
         title="Layout"
@@ -576,7 +639,7 @@ export function SettingsView({
           </div>
           <div className="rounded-xl bg-surface px-3 py-3 lift">
             <dt className="text-muted">{t("Media")}</dt>
-            <dd className="font-display text-3xl text-fg tabular-nums">{pictures.count}</dd>
+            <dd className="font-display text-3xl text-fg tabular-nums">{media.count}</dd>
           </div>
           <div className="rounded-xl bg-surface px-3 py-3 lift">
             <dt className="text-muted">{t("Size")}</dt>
@@ -584,7 +647,7 @@ export function SettingsView({
           </div>
           <div className="rounded-xl bg-surface px-3 py-3 lift">
             <dt className="text-muted">{t("In media")}</dt>
-            <dd className="font-display text-3xl text-fg tabular-nums">{formatBytes(pictures.bytes)}</dd>
+            <dd className="font-display text-3xl text-fg tabular-nums">{formatBytes(media.bytes)}</dd>
           </div>
           {room ? (
             <>
@@ -726,6 +789,7 @@ const CONTENTS = [
   { id: "settings-type", title: "Type" },
   { id: "settings-search", title: "Search" },
   { id: "settings-links", title: "Link previews" },
+  { id: "settings-pictures", title: "Pictures" },
   { id: "settings-layout", title: "Layout" },
   { id: "settings-statistics", title: "Statistics" },
   { id: "settings-sample", title: "Sample" },
