@@ -30,7 +30,7 @@ import {
 } from "@/lib/tl/model";
 import { notesToIcs } from "@/lib/tl/ics";
 import { downloadText } from "@/lib/tl/storage";
-import { formatUiDate } from "@/lib/tl/language";
+import { currentLanguage, formatUiDate, parseRoman, romanNumeral, uiNumeral } from "@/lib/tl/language";
 import { Modal, InfoButton, btnGhost, btnInk, btnPrimary, btnSurface, cn } from "@/components/tl/ui";
 import { t, tLine } from "@/lib/tl/i18n";
 
@@ -351,7 +351,7 @@ export function EditorDialog({
       >
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
-          {t("Type")}
+          {t("Kind")}
           {lockedType ? (
             <p className="field flex items-center">{typeLabel(form.type)}</p>
           ) : (
@@ -896,6 +896,19 @@ function DateFields({
   hint?: string;
   onChange: (partial: Partial<FormState>) => void;
 }) {
+  const [editing, setEditing] = useState<"year" | "day" | null>(null);
+  const shown = (kind: "year" | "day", value: string) => {
+    if (editing === kind || currentLanguage() !== "la" || !/^\d+$/.test(value)) return value;
+    const n = Number(value);
+    return n >= 1 ? romanNumeral(n) : value;
+  };
+  const commit = (raw: string) => {
+    const trimmed = raw.trim();
+    if (currentLanguage() !== "la") return trimmed;
+    if (/^\d+$/.test(trimmed)) return trimmed;
+    const parsed = parseRoman(trimmed);
+    return parsed != null && parsed >= 1 && parsed <= 9999 ? String(parsed) : trimmed;
+  };
   return (
     <fieldset>
       <legend className="flex items-center gap-1 text-sm font-medium text-fg">
@@ -908,7 +921,13 @@ function DateFields({
           inputMode="numeric"
           placeholder={t("Year")}
           aria-label={t("{label} year", { label })}
-          value={year}
+          value={shown("year", year)}
+          onFocus={() => setEditing("year")}
+          onBlur={(event) => {
+            setEditing(null);
+            const next = commit(event.target.value);
+            if (next !== year) onChange({ [names.year]: next });
+          }}
           onChange={(event) => onChange({ [names.year]: event.target.value })}
         />
         <select
@@ -929,7 +948,13 @@ function DateFields({
           inputMode="numeric"
           placeholder={t("Day")}
           aria-label={t("{label} day", { label })}
-          value={day}
+          value={shown("day", day)}
+          onFocus={() => setEditing("day")}
+          onBlur={(event) => {
+            setEditing(null);
+            const next = commit(event.target.value);
+            if (next !== day) onChange({ [names.day]: next });
+          }}
           onChange={(event) => onChange({ [names.day]: event.target.value })}
         />
       </div>
@@ -1423,7 +1448,7 @@ function Wheel({
               event.currentTarget.scrollIntoView({ block: "center" });
             }}
             >
-              {item === "Whole year" ? t("Whole year") : item}
+              {item === "Whole year" ? t("Whole year") : uiNumeral(item)}
             </button>
           ))}
           <div className="h-16" />

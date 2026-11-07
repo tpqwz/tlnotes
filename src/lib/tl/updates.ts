@@ -1,6 +1,7 @@
 import type { Note } from "@/lib/tl/model";
 
 const posted = new Date(2026, 9, 31, 7, 0).getTime();
+const since = new Date(2026, 10, 5, 3, 30).getTime();
 
 const RETIRED_UPDATES = new Set(["update-2026-10-31", "update-2026-10-31-recent"]);
 
@@ -31,6 +32,32 @@ export const UPDATE_NOTES: Note[] = [
     tags: [],
     created: posted,
     edited: posted,
+    date: null,
+  },
+  {
+    id: "update-2026-11-05",
+    type: "update",
+    content: [
+      "What changed since.",
+      "",
+      "- The sheet is a little wider.",
+      "- With the scope lines hidden, the cards sit clear of the vertical toolbar.",
+      "- A light scroll no longer starts a selection. A firm hold still does.",
+      "- On Android the composer sits closer to the navigation bar.",
+      "- In the browser, and in the installed site, pictures stay off until you turn each one on. They share the space kept for the notes, and TLNotes says so before it keeps one. Turning both off removes the pictures kept in that copy.",
+      "- A link preview keeps its picture only when pictures are on. A link added or edited in the editor is previewed when link previews are on.",
+      "- Offside is a theme. Choosing it also chooses the Offside colours.",
+      "- Each theme button is a sample of that theme, including its press.",
+      "- A language the app speaks changes the buttons, the settings, and the dates, not only the quotation at the head. Many more are listed. Aramaic is Ārāmāʾīṯ, in Latin letters.",
+      "- Anglish, English in the manner of Wycliffe and of the King James Bible, and Old English in the manner of Beowulf are listed. So are Irish Gaelic and Scottish Gaelic. Each changes the buttons and the dates.",
+      "- Latin is more classical, with macrons. Its dates and counts are Roman numerals. Zero is written nulla.",
+      "- A language that comes in only on a note is marked quotations. It leads that quotation. The buttons stay as they are.",
+      "- Ages, in Settings, takes a birthday and lays one period for each year of life, through the year now under way. That year stays open. Running it again replaces those periods.",
+      "- The sample timeline is laid out that way, from birth on past the present. The last of those years stays open.",
+    ].join("\n"),
+    tags: [],
+    created: since,
+    edited: since,
     date: null,
   },
 ];

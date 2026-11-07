@@ -713,7 +713,7 @@ export function quotationFaces(note) {
 export function citedQuotation(note) {
 	const faces = quotationFaces(note);
 	const lines = [wrapQuote(faces.primary)];
-	if (faces.translator) lines.push(`Translated by ${faces.translator}`);
+	if (faces.translator) lines.push(`${t("Translated by")} ${faces.translator}`);
 	if (faces.showOriginal && faces.original.trim()) {
 		lines.push("", wrapQuote(faces.original));
 		if (faces.originalLanguage) lines.push(faces.originalLanguage);

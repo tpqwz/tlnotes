@@ -1,4 +1,5 @@
 import type { Note, PartialDate } from "@/lib/tl/model";
+import { formatUiDate } from "@/lib/tl/language";
 import { nativeSync } from "@/lib/tl/native-sync";
 
 type PhoneEvent = {
@@ -38,6 +39,34 @@ function clip(value: string | undefined, max: number) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+function clock(ms: number) {
+  const date = new Date(ms);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function writtenDay(ms: number) {
+  const date = new Date(ms);
+  return formatUiDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12), {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function whenText(startMs: number, endMs: number, allDay: boolean, span: number) {
+  if (allDay) {
+    if (span > 1) return `${writtenDay(startMs)} – ${writtenDay(endMs - 86_400_000)}`;
+    return writtenDay(startMs);
+  }
+  const start = localDate(startMs);
+  const end = localDate(endMs);
+  const same = start.year === end.year && start.month === end.month && start.day === end.day;
+  if (!same) return `${writtenDay(startMs)}, ${clock(startMs)} – ${writtenDay(endMs)}, ${clock(endMs)}`;
+  if (endMs !== startMs) return `${writtenDay(startMs)}\n${clock(startMs)}–${clock(endMs)}`;
+  return `${writtenDay(startMs)}\n${clock(startMs)}`;
+}
+
 /** Events already on this phone, from one year ago through two years ahead. */
 export async function readPhoneCalendar(): Promise<Note[]> {
   if (!nativeSync()) return [];
@@ -52,15 +81,17 @@ export function notesFromPhoneEvents(events: PhoneEvent[], now = Date.now()): No
   for (const event of events) {
     if (typeof event.startDate !== "number" || !Number.isFinite(event.startDate)) continue;
     const title = clip(event.title, 180) || "Calendar";
-    const detail = [clip(event.location, 180), clip(event.notes, 400)].filter(Boolean).join("\n");
     const start = localDate(event.startDate);
     const endMs = typeof event.endDate === "number" && Number.isFinite(event.endDate) ? event.endDate : event.startDate;
     const end = localDate(endMs);
     const span = dayIndex(end) - dayIndex(start);
+    const detail = [whenText(event.startDate, endMs, event.isAllDay === true, span), clip(event.location, 180), clip(event.notes, 400)]
+      .filter(Boolean)
+      .join("\n\n");
     const tag = clip(event.calendarName, 40);
     const base = {
       id: phoneId(event),
-      content: detail ? `${title}\n${detail}` : title,
+      content: `${title}\n\n${detail}`,
       tags: tag ? [tag] : [],
       created: now,
       edited: now,

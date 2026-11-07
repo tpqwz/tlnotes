@@ -2,7 +2,8 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { Download, Trash2, Upload } from "lucide-react";
 import { formatBytes, typeLabel, type Note } from "@/lib/tl/model";
 import { FACE_FAMILY, FACE_LABEL, FACES, NATIVE_SCHEME, RULE_LABEL, RULES, SCHEMES, THEME_LABEL, THEME_SWATCH, THEMES, TYPE_SIZE_LABEL, TYPE_SIZES, type Face, type Rule, type Scheme, type Settings, type Theme, type TypeSize } from "@/lib/tl/storage";
-import { languageChoices, languageName, systemLanguage } from "@/lib/tl/language";
+import { currentLanguage, formatUiDate, languageChoices, languageName, parseRoman, romanNumeral, speaksLanguage, systemLanguage, uiNumber } from "@/lib/tl/language";
+import { lifeYears, type Day } from "@/lib/tl/ages";
 import { t, tLine } from "@/lib/tl/i18n";
 import { chooseModel, embedStatus, subscribeEmbed, type EmbedStatus, type SearchModel } from "@/lib/tl/embed";
 import { SealSection } from "@/components/tl/vault";
@@ -53,6 +54,7 @@ export function SettingsView({
   onPagePackage,
   onPhoneCalendar,
   onSample,
+  onAges,
   sealed,
   passkey,
   onSeal,
@@ -103,6 +105,7 @@ export function SettingsView({
   onPagePackage: (pagePackage: boolean) => void;
   onPhoneCalendar: () => void;
   onSample: () => void;
+  onAges: (birth: Day) => void;
   sealed: boolean;
   passkey: boolean;
   onSeal: (passphrase: string) => Promise<string>;
@@ -328,18 +331,25 @@ export function SettingsView({
       <Section
         id="settings-language"
         title="Language"
-        about="The app uses this language: the settings, the buttons, and these notes. Quotations lead in it when that wording is here. Page names do the same. This device is the default. Lingua Latina is always listed. Other languages appear when a page or a quotation brings them in."
+        about="The app uses this language: the settings, the buttons, and these notes. Quotations lead in it when that wording is here. This device is the default. Latin and every language the app speaks are always listed. A language brought in only by a note changes the leading quotation, not the buttons."
       >
         <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
           {t("App language")}
           <select className="field" value={language} onChange={(event) => onLanguage(event.target.value)}>
             {languageChoices(notes, language).map((choice) => (
               <option key={choice.id} value={choice.id}>
-                {choice.id === "system" ? `${t("This device")} · ${languageName(systemLanguage())}` : choice.label}
+                {choice.id === "system"
+                  ? `${t("This device")} · ${languageName(systemLanguage())}`
+                  : speaksLanguage(choice.id)
+                    ? choice.label
+                    : `${choice.label} · ${t("quotations")}`}
               </option>
             ))}
           </select>
         </label>
+        {!speaksLanguage(currentLanguage()) ? (
+          <p className="mt-2 text-sm text-muted">{t("This language leads the quotations. The buttons stay as they are.")}</p>
+        ) : null}
       </Section>
 
       <Section
@@ -631,15 +641,15 @@ export function SettingsView({
         </div>
       </Section>
 
-      <Section id="settings-statistics" title="Statistics" about="Notes is everything kept. Media counts pictures and clips saved in the journal, not an address that still points elsewhere. Size is the whole backup. In media is how much of that backup those files take. Allowance is what this browser will give the site. Used is everything the site has stored. Left is the remainder.">
+      <Section id="settings-statistics" title="Statistics" about="Notes is everything kept. Media counts pictures and clips saved in the journal, not an address that still points elsewhere. Size is the whole backup. In media is how much of that backup those files take. Allowance is what this browser will give the site. Used is everything the site has stored. Remaining is the rest.">
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-xl bg-surface px-3 py-3 lift">
             <dt className="text-muted">{t("Notes")}</dt>
-            <dd className="font-display text-3xl text-fg tabular-nums">{notes.length}</dd>
+            <dd className="font-display text-3xl text-fg tabular-nums">{uiNumber(notes.length)}</dd>
           </div>
           <div className="rounded-xl bg-surface px-3 py-3 lift">
             <dt className="text-muted">{t("Media")}</dt>
-            <dd className="font-display text-3xl text-fg tabular-nums">{media.count}</dd>
+            <dd className="font-display text-3xl text-fg tabular-nums">{uiNumber(media.count)}</dd>
           </div>
           <div className="rounded-xl bg-surface px-3 py-3 lift">
             <dt className="text-muted">{t("Size")}</dt>
@@ -660,7 +670,7 @@ export function SettingsView({
                 <dd className="font-display text-3xl text-fg tabular-nums">{formatBytes(room.usage)}</dd>
               </div>
               <div className="rounded-xl bg-surface px-3 py-3 lift">
-                <dt className="text-muted">{t("Left")}</dt>
+                <dt className="text-muted">{t("Remaining")}</dt>
                 <dd className="font-display text-3xl text-fg tabular-nums">{formatBytes(Math.max(0, room.quota - room.usage))}</dd>
               </div>
             </>
@@ -672,12 +682,14 @@ export function SettingsView({
               .sort((a, b) => a[0].localeCompare(b[0]))
               .map(([type, count]) => (
                 <li key={type} className="rounded-full bg-bg px-2.5 py-1">
-                  {typeLabel(type)} <span className="tabular-nums text-fg">{count}</span>
+                  {typeLabel(type)} <span className="tabular-nums text-fg">{uiNumber(count)}</span>
                 </li>
               ))}
           </ul>
         )}
       </Section>
+
+      <AgesSection onAges={onAges} />
 
       <Section
         id="settings-sample"
@@ -689,6 +701,96 @@ export function SettingsView({
         </button>
       </Section>
     </div>
+  );
+}
+
+function AgesSection({ onAges }: { onAges: (birth: Day) => void }) {
+  const [year, setYear] = useState("");
+  const [month, setMonth] = useState("");
+  const [day, setDay] = useState("");
+  const [editing, setEditing] = useState<"year" | "day" | null>(null);
+  const [fault, setFault] = useState("");
+  const label = t("Born");
+  const shown = (kind: "year" | "day", value: string) => {
+    if (editing === kind || currentLanguage() !== "la" || !/^\d+$/.test(value)) return value;
+    const n = Number(value);
+    return n >= 1 ? romanNumeral(n) : value;
+  };
+  const commit = (raw: string) => {
+    const trimmed = raw.trim();
+    if (currentLanguage() !== "la") return trimmed;
+    if (/^\d+$/.test(trimmed)) return trimmed;
+    const parsed = parseRoman(trimmed);
+    return parsed != null && parsed >= 1 && parsed <= 9999 ? String(parsed) : trimmed;
+  };
+  function lay() {
+    const birth = { year: Number(year), month: Number(month), day: Number(day) };
+    const life = lifeYears(birth, Date.now());
+    if (!life.ok) {
+      setFault(
+        life.reason === "ahead"
+          ? t("That day has not come.")
+          : life.reason === "long"
+            ? t("That span is longer than the journal will keep.")
+            : t("That is not a day."),
+      );
+      return;
+    }
+    setFault("");
+    onAges(birth);
+  }
+  return (
+    <Section
+      id="settings-ages"
+      title="Ages"
+      about="A birthday lays one period for each year of life, from birth through the year now under way. That year stays open. Running it again replaces those periods."
+    >
+      <fieldset>
+        <legend className="text-sm font-medium text-fg">{label}</legend>
+        <div className="mt-1.5 grid grid-cols-3 gap-2">
+          <input
+            className="field"
+            inputMode="numeric"
+            placeholder={t("Year")}
+            aria-label={t("{label} year", { label })}
+            value={shown("year", year)}
+            onFocus={() => setEditing("year")}
+            onBlur={(event) => {
+              setEditing(null);
+              const next = commit(event.target.value);
+              if (next !== year) setYear(next);
+            }}
+            onChange={(event) => setYear(event.target.value)}
+          />
+          <select className="field" aria-label={t("{label} month", { label })} value={month} onChange={(event) => setMonth(event.target.value)}>
+            <option value="">{t("Month")}</option>
+            {Array.from({ length: 12 }, (_, index) => (
+              <option key={index + 1} value={String(index + 1)}>
+                {formatUiDate(new Date(2000, index, 1), { month: "long" })}
+              </option>
+            ))}
+          </select>
+          <input
+            className="field"
+            inputMode="numeric"
+            placeholder={t("Day")}
+            aria-label={t("{label} day", { label })}
+            value={shown("day", day)}
+            onFocus={() => setEditing("day")}
+            onBlur={(event) => {
+              setEditing(null);
+              const next = commit(event.target.value);
+              if (next !== day) setDay(next);
+            }}
+            onChange={(event) => setDay(event.target.value)}
+          />
+        </div>
+      </fieldset>
+      <button type="button" className={`${btnSurface} mt-3`} onClick={lay}>
+        {t("Lay the years")}
+      </button>
+      {fault ? <p className="mt-2 text-sm text-muted">{fault}</p> : null}
+    </Section>
   );
 }
 
@@ -792,6 +894,7 @@ const CONTENTS = [
   { id: "settings-pictures", title: "Pictures" },
   { id: "settings-layout", title: "Layout" },
   { id: "settings-statistics", title: "Statistics" },
+  { id: "settings-ages", title: "Ages" },
   { id: "settings-sample", title: "Sample" },
 ];
 

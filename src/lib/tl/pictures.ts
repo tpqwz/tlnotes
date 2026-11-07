@@ -5,6 +5,10 @@ import { keepsFiles } from "@/lib/tl/native-sync";
 const AGENT = "TLNotes/1.0 (personal repertorium; local pictures)";
 const tried = new Set<string>();
 
+export function retryPreview(id: string, url: string) {
+  tried.delete(`${id}:${url}`);
+}
+
 function pause() {
   return new Promise((resolve) => setTimeout(resolve, 400));
 }

@@ -657,11 +657,11 @@ function QuotationBody({ note, query }: { note: Note; query: string }) {
   const faces = quotationFaces(note);
   const cite = quotationCite(note);
   const language = faces.originalLanguage ? languageName(faces.originalLanguage) : "";
-  const label = language ? `Original (${language})` : "Original";
+  const label = language ? t("Original ({language})", { language }) : t("Original");
   return (
     <div className="flex flex-col gap-3">
       <QuotationText text={clip(faces.primary)} query={query} />
-      {faces.translator ? <p className="text-sm text-muted">Translated by {faces.translator}</p> : null}
+      {faces.translator ? <p className="text-sm text-muted">{t("Translated by")} {faces.translator}</p> : null}
       {faces.showOriginal && (
         <div>
           <p className="mb-1 text-sm text-pretty text-muted">

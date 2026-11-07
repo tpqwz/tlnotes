@@ -5,9 +5,11 @@ import { TIMELINE_TYPES, cleanMediaFacts, collectTags, isPageType, linkFromText,
 import { compressImage, compressVideo } from "@/lib/tl/media";
 import { ingestAddress } from "@/lib/tl/watch";
 import { t, tLine } from "@/lib/tl/i18n";
+import { uiNumeral } from "@/lib/tl/language";
 import { calendarNotes, notesToIcs, parseIcs } from "@/lib/tl/ics";
 import { readPhoneCalendar } from "@/lib/tl/phone-calendar";
 import { sampleNotes } from "@/lib/tl/sample";
+import { ageNotes, isAgeNote } from "@/lib/tl/ages";
 import { withUpdates } from "@/lib/tl/updates";
 import { finishIncomingShare, listenNativeShare, noteFromShare, peekIncomingShare, pullShare, shareAsTyped } from "@/lib/tl/share";
 import {
@@ -51,7 +53,7 @@ import { ConfirmDialog, EditorDialog, FilterDialog, JumpDialog } from "@/compone
 import { SettingsView, SyncDoor } from "@/components/tl/settings";
 import { TrashView } from "@/components/tl/trash";
 import { TaskList, type TaskSort } from "@/components/tl/tasks";
-import { fillShelf } from "@/lib/tl/pictures";
+import { fillShelf, retryPreview } from "@/lib/tl/pictures";
 import { blendNotes, rankNotes } from "@/lib/tl/search";
 import { chooseModel, embedStatus, scoreMeaning, subscribeEmbed, watchNotes, type SearchModel } from "@/lib/tl/embed";
 import { Modal, btnPrimary, cn } from "@/components/tl/ui";
@@ -296,9 +298,9 @@ export function TimelineApp() {
     return () => {
       stop = true;
     };
-    // A saved picture does not restart the walk. A new note does.
+    // A saved picture does not restart the walk. A new or edited link does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locked, data?.settings.linkPreviews, data?.settings.picturesBrowser, data?.settings.picturesSite, data?.notes.map((note) => note.id).join("|")]);
+  }, [locked, data?.settings.linkPreviews, data?.settings.picturesBrowser, data?.settings.picturesSite, data?.notes.flatMap((note) => (note.type === "link" ? [`${note.id}\t${note.url ?? ""}\t${note.edited}`] : [])).join("|")]);
 
   useEffect(() => {
     if (!data) return;
@@ -813,6 +815,7 @@ export function TimelineApp() {
   function saveNote(note: Note) {
     const current = dataRef.current;
     if (!current) return;
+    if (note.type === "link" && note.url && current.settings.linkPreviews !== false && !note.preview?.kept) retryPreview(note.id, note.url);
     patch({ notes: current.notes.map((item) => (item.id === note.id ? note : item)) });
     setEditingId(null);
     toast.success(t("Note updated"));
@@ -969,6 +972,18 @@ export function TimelineApp() {
     setView("timeline");
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
     toast.success(t("Sample timeline added"));
+  }
+
+  function layAges(birth: { year: number; month: number; day: number }) {
+    const current = dataRef.current;
+    if (!current) return;
+    const made = ageNotes(birth, Date.now());
+    if (made.length === 0) return;
+    patch({
+      notes: [...current.notes.filter((note) => !isAgeNote(note)), ...made],
+      trash: current.trash.filter((note) => !isAgeNote(note)),
+    });
+    toast.success(made.length === 1 ? t("1 age laid.") : t("{n} ages laid.", { n: made.length }));
   }
 
   function clearAll() {
@@ -1307,7 +1322,7 @@ export function TimelineApp() {
               <>
                 <span className="shrink-0 text-muted/50">/</span>
                 <button type="button" data-crumb="" className="min-w-0 shrink truncate text-left hover:text-primary" onClick={openJump}>
-                  {place}
+                  {place.split(" ").map((part) => uiNumeral(part)).join(" ")}
                 </button>
               </>
             ) : null
@@ -1558,6 +1573,7 @@ export function TimelineApp() {
                   commit({ ...current, settings: { ...current.settings, language } });
                 }}
                 onSample={loadSample}
+                onAges={layAges}
                 sealed={isVaultOn()}
                 passkey={deviceUnlock}
                 onSeal={async (passphrase) => {

@@ -8,6 +8,7 @@ const ALIASES: Record<string, string> = {
   lat: "la",
   latin: "la",
   "lingua latina": "la",
+  "lingua latīna": "la",
   grc: "grc",
   greek: "grc",
   "ancient greek": "grc",
@@ -84,11 +85,52 @@ const ALIASES: Record<string, string> = {
   catalan: "ca",
   eo: "eo",
   esperanto: "eo",
+  arc: "arc",
+  aramaic: "arc",
+  "transliterated aramaic": "arc",
+  syriac: "arc",
+  syc: "arc",
+  "classical syriac": "arc",
+  agl: "agl",
+  anglish: "agl",
+  wyc: "wyc",
+  wycliffe: "wyc",
+  wyclif: "wyc",
+  wycliffite: "wyc",
+  "wycliffe english": "wyc",
+  "english - wycliffe": "wyc",
+  "middle english": "wyc",
+  enm: "wyc",
+  kjv: "kjv",
+  "king james": "kjv",
+  "king james english": "kjv",
+  "english - king james": "kjv",
+  "authorized version": "kjv",
+  ang: "ang",
+  "old english": "ang",
+  "anglo-saxon": "ang",
+  englisc: "ang",
+  beowulf: "ang",
+  "old english - beowulf": "ang",
+  oe: "ang",
+  ga: "ga",
+  irish: "ga",
+  gaeilge: "ga",
+  "irish gaelic": "ga",
+  "gaelic - irish": "ga",
+  "gaelic irish": "ga",
+  gd: "gd",
+  gàidhlig: "gd",
+  gaidhlig: "gd",
+  "scottish gaelic": "gd",
+  "scots gaelic": "gd",
+  "gaelic - scottish": "gd",
+  "gaelic scottish": "gd",
 };
 
 const NAMES: Record<string, string> = {
   en: "English",
-  la: "Lingua Latina",
+  la: "Lingua Latīna",
   grc: "Ancient Greek",
   el: "Greek",
   zh: "Chinese",
@@ -122,9 +164,67 @@ const NAMES: Record<string, string> = {
   id: "Indonesian",
   ca: "Catalan",
   eo: "Esperanto",
+  arc: "Aramaic",
+  agl: "Anglish",
+  wyc: "Wycliffe English",
+  kjv: "King James English",
+  ang: "Old English",
+  ga: "Irish",
+  gd: "Scottish Gaelic",
 };
 
 export type LanguageChoice = { id: string; label: string };
+
+/** Languages with a full wording of the app, in the order the menu uses. */
+export const SPOKEN: { id: string; label: string }[] = [
+  { id: "agl", label: "Anglish" },
+  { id: "wyc", label: "English - Wycliffe" },
+  { id: "kjv", label: "English - King James" },
+  { id: "ang", label: "Old English - Beowulf" },
+  { id: "ga", label: "Gaelic - Irish" },
+  { id: "gd", label: "Gaelic - Scottish" },
+  { id: "es", label: "Español" },
+  { id: "fr", label: "Français" },
+  { id: "de", label: "Deutsch" },
+  { id: "it", label: "Italiano" },
+  { id: "pt", label: "Português" },
+  { id: "nl", label: "Nederlands" },
+  { id: "el", label: "Ελληνικά" },
+  { id: "ru", label: "Русский" },
+  { id: "zh", label: "中文" },
+  { id: "ja", label: "日本語" },
+  { id: "ar", label: "العربية" },
+  { id: "pl", label: "Polski" },
+  { id: "uk", label: "Українська" },
+  { id: "sv", label: "Svenska" },
+  { id: "cs", label: "Čeština" },
+  { id: "da", label: "Dansk" },
+  { id: "fi", label: "Suomi" },
+  { id: "hu", label: "Magyar" },
+  { id: "ro", label: "Română" },
+  { id: "tr", label: "Türkçe" },
+  { id: "vi", label: "Tiếng Việt" },
+  { id: "ko", label: "한국어" },
+  { id: "hi", label: "हिन्दी" },
+  { id: "bn", label: "বাংলা" },
+  { id: "ta", label: "தமிழ்" },
+  { id: "id", label: "Indonesia" },
+  { id: "ca", label: "Català" },
+  { id: "eo", label: "Esperanto" },
+  { id: "grc", label: "Ἀρχαία Ἑλληνική" },
+  { id: "sa", label: "संस्कृतम्" },
+  { id: "pi", label: "Pāli" },
+  { id: "he", label: "עברית" },
+  { id: "fa", label: "فارسی" },
+  { id: "arc", label: "Ārāmāʾīṯ" },
+];
+
+const SPOKEN_IDS = new Set(SPOKEN.map((item) => item.id));
+
+/** True when this code has a wording for the buttons, not only for quotations. */
+export function speaksLanguage(code: string) {
+  return code === "en" || code === "la" || SPOKEN_IDS.has(code);
+}
 
 export function languageCode(value: string): string {
   const key = value.trim().toLowerCase().replace(/_/g, "-");
@@ -178,28 +278,147 @@ export function currentLanguage() {
   return active;
 }
 
-const LATIN_MONTH = ["Ianuarius", "Februarius", "Martius", "Aprilis", "Maius", "Iunius", "Iulius", "Augustus", "September", "October", "November", "December"];
-const LATIN_MONTH_GEN = ["Ianuarii", "Februarii", "Martii", "Aprilis", "Maii", "Iunii", "Iulii", "Augusti", "Septembris", "Octobris", "Novembris", "Decembris"];
-const LATIN_MONTH_SHORT = ["Ian", "Feb", "Mar", "Apr", "Mai", "Iun", "Iul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const LATIN_WEEKDAY = ["dies Solis", "dies Lunae", "dies Martis", "dies Mercurii", "dies Iovis", "dies Veneris", "dies Saturni"];
+const LATIN_MONTH = ["Iānuārius", "Februārius", "Mārtius", "Aprīlis", "Māius", "Iūnius", "Iūlius", "Augustus", "September", "Octōber", "November", "December"];
+const LATIN_MONTH_GEN = ["Iānuāriī", "Februāriī", "Mārtiī", "Aprīlis", "Māiī", "Iūniī", "Iūliī", "Augustī", "Septembris", "Octōbris", "Novembris", "Decembris"];
+const LATIN_MONTH_SHORT = ["Iān", "Feb", "Mār", "Apr", "Māi", "Iūn", "Iūl", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const LATIN_WEEKDAY = ["diēs Sōlis", "diēs Lūnae", "diēs Mārtis", "diēs Mercuriī", "diēs Iovis", "diēs Veneris", "diēs Sāturnī"];
+const ROMAN_GLYPHS: [number, string][] = [
+  [1000, "M"],
+  [900, "CM"],
+  [500, "D"],
+  [400, "CD"],
+  [100, "C"],
+  [90, "XC"],
+  [50, "L"],
+  [40, "XL"],
+  [10, "X"],
+  [9, "IX"],
+  [5, "V"],
+  [4, "IV"],
+  [1, "I"],
+];
+const ROMAN_VALUE: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+
+/** A whole number as a Roman numeral. Zero, which Latin has no figure for, is nulla. */
+export function romanNumeral(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  const negative = value < 0;
+  let n = Math.trunc(Math.abs(value));
+  if (n === 0) return "nulla";
+  let out = "";
+  for (const [amount, glyph] of ROMAN_GLYPHS) {
+    while (n >= amount) {
+      out += glyph;
+      n -= amount;
+    }
+  }
+  return negative ? `−${out}` : out;
+}
+
+/** Read a Roman numeral, or nulla. IIII is accepted as well as IV. */
+export function parseRoman(text: string): number | null {
+  const trimmed = text.trim();
+  if (/^nulla$/i.test(trimmed)) return 0;
+  const negative = trimmed.startsWith("−") || trimmed.startsWith("-");
+  const body = (negative ? trimmed.slice(1) : trimmed).toUpperCase();
+  if (!/^[IVXLCDM]+$/.test(body)) return null;
+  let total = 0;
+  let prev = 0;
+  for (let i = body.length - 1; i >= 0; i--) {
+    const cur = ROMAN_VALUE[body[i]!] ?? 0;
+    if (cur < prev) total -= cur;
+    else {
+      total += cur;
+      prev = cur;
+    }
+  }
+  if (total <= 0) return null;
+  return negative ? -total : total;
+}
+
+/** A count, as a Roman numeral when the app is speaking Latin. */
+export function uiNumber(value: number): string {
+  if (currentLanguage() !== "la" || !Number.isInteger(value)) return String(value);
+  return romanNumeral(value);
+}
+
+/** An integer written in digits, shown as a Roman numeral in Latin. Other text is left alone. */
+export function uiNumeral(text: string): string {
+  if (currentLanguage() !== "la" || !/^-?\d+$/.test(text)) return text;
+  return romanNumeral(Number(text));
+}
+
+function latinClock(date: Date) {
+  return `${romanNumeral(date.getHours())}·${romanNumeral(date.getMinutes())}`;
+}
+
+const ANGLISH_WEEKDAY = ["Sunday", "Monday", "Tiwesday", "Wodnesday", "Thunresday", "Friday", "Saterday"];
+const ANGLISH_MONTH = ["Afteryule", "Solmonth", "Rethemonth", "Eastermonth", "Threemilk", "Forelithe", "Afterlithe", "Weedmonth", "Holymonth", "Winterfulth", "Blotmonth", "Ereyule"];
+const ANGLISH_SHORT = ["Aft", "Sol", "Ret", "Eas", "Thr", "For", "Lit", "Wee", "Hol", "Win", "Blo", "Ere"];
+
+const WYCLIFFE_WEEKDAY = ["Soneday", "Moneday", "Tiwesday", "Wednesdai", "Thuresday", "Fridai", "Saterdai"];
+const WYCLIFFE_MONTH = ["Janeuer", "Feuerer", "March", "Averil", "May", "Juyn", "Juyl", "August", "Septembre", "Octobre", "Novembre", "Decembre"];
+const WYCLIFFE_SHORT = ["Jan", "Feu", "Mar", "Ave", "May", "Juy", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const KJV_WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const KJV_MONTH = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const KJV_SHORT = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "June", "July", "Aug.", "Sept.", "Oct.", "Nov.", "Dec."];
+
+const OLD_ENGLISH_WEEKDAY = ["Sunnandæg", "Mōnandæg", "Tīwesdæg", "Wōdnesdæg", "Þunresdæg", "Frīgedæg", "Sæternesdæg"];
+const OLD_ENGLISH_MONTH = ["Æfterra Gēola", "Solmōnaþ", "Hrēþmōnaþ", "Ēastermōnaþ", "Þrīmilce", "Ǣrra Līþa", "Æfterra Līþa", "Wēodmōnaþ", "Hāligmōnaþ", "Winterfylleþ", "Blōtmōnaþ", "Ǣrra Gēola"];
+const OLD_ENGLISH_SHORT = ["Æft.G", "Sol", "Hrēþ", "Ēast", "Þrīm", "Ǣr.L", "Æft.L", "Wēod", "Hāl", "Wint", "Blōt", "Ǣr.G"];
+
+function dayOrdinal(day: number) {
+  const teen = day % 100;
+  if (teen >= 11 && teen <= 13) return `${day}th`;
+  const last = day % 10;
+  if (last === 1) return `${day}st`;
+  if (last === 2) return `${day}nd`;
+  if (last === 3) return `${day}rd`;
+  return `${day}th`;
+}
+
+function clock24(date: Date) {
+  return `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+/** Dates these tongues would have written, because no browser locale speaks them. */
+function historicalDate(date: Date, options: Intl.DateTimeFormatOptions, weekday: string[], month: string[], monthShort: string[], shape: "plain" | "kjv") {
+  const day = date.getDate();
+  const mon = date.getMonth();
+  const year = date.getFullYear();
+  const hasTime = options.hour != null || options.minute != null;
+  if (options.weekday && options.month && options.day) {
+    if (shape === "kjv") return `${weekday[date.getDay()]}, the ${dayOrdinal(day)} day of ${month[mon]}`;
+    return `${weekday[date.getDay()]}, ${day} ${month[mon]}`;
+  }
+  if (options.month === "long" && !options.day && !options.year) return month[mon];
+  if (hasTime) {
+    const body = shape === "kjv" ? `the ${dayOrdinal(day)} of ${monthShort[mon]} ${year}` : `${day} ${monthShort[mon]} ${year}`;
+    return `${body}, ${clock24(date)}`;
+  }
+  if (shape === "kjv") return `the ${dayOrdinal(day)} day of ${month[mon]}, ${year}`;
+  return `${day} ${month[mon]} ${year}`;
+}
 
 /** Dates follow the app language. Latin is written out, because browsers do not agree on a Latin locale. */
 export function formatUiDate(date: Date, options: Intl.DateTimeFormatOptions) {
   const lang = currentLanguage();
+  if (lang === "agl") return historicalDate(date, options, ANGLISH_WEEKDAY, ANGLISH_MONTH, ANGLISH_SHORT, "plain");
+  if (lang === "wyc") return historicalDate(date, options, WYCLIFFE_WEEKDAY, WYCLIFFE_MONTH, WYCLIFFE_SHORT, "plain");
+  if (lang === "kjv") return historicalDate(date, options, KJV_WEEKDAY, KJV_MONTH, KJV_SHORT, "kjv");
+  if (lang === "ang") return historicalDate(date, options, OLD_ENGLISH_WEEKDAY, OLD_ENGLISH_MONTH, OLD_ENGLISH_SHORT, "plain");
   if (lang !== "la") {
-    const locale = lang === "zh" ? "zh-Hans" : lang || "en";
+    const locale = lang === "zh" ? "zh-Hans" : lang === "ga" ? "ga-IE" : lang === "gd" ? "gd-GB" : lang || "en";
     const hasTime = options.hour != null || options.minute != null;
     return hasTime ? date.toLocaleString(locale, options) : date.toLocaleDateString(locale, options);
   }
-  const day = date.getDate();
+  const day = romanNumeral(date.getDate());
   const month = date.getMonth();
-  const year = date.getFullYear();
+  const year = romanNumeral(date.getFullYear());
   if (options.weekday && options.month && options.day) return `${LATIN_WEEKDAY[date.getDay()]}, ${day} ${LATIN_MONTH_GEN[month]}`;
   if (options.month === "long" && !options.day && !options.year) return LATIN_MONTH[month];
-  if (options.hour != null || options.minute != null) {
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${day} ${LATIN_MONTH_SHORT[month]} ${year}, ${date.getHours()}:${minutes}`;
-  }
+  if (options.hour != null || options.minute != null) return `${day} ${LATIN_MONTH_SHORT[month]} ${year}, ${latinClock(date)}`;
   return `${day} ${LATIN_MONTH[month]} ${year}`;
 }
 
@@ -226,7 +445,8 @@ export function languageChoices(
   const choices: LanguageChoice[] = [
     { id: "system", label: `This device · ${languageName(system)}` },
     { id: "en", label: "English" },
-    { id: "la", label: "Lingua Latina" },
+    { id: "la", label: "Lingua Latīna" },
+    ...SPOKEN,
   ];
   const seen = new Set(choices.map((choice) => choice.id));
   const found: string[] = [];
@@ -240,7 +460,7 @@ export function languageChoices(
     ];
     for (const item of raw) {
       const code = item ? languageCode(item) : "";
-      if (!code || seen.has(code)) continue;
+      if (!code || seen.has(code) || SPOKEN_IDS.has(code) || code === "en" || code === "la") continue;
       seen.add(code);
       found.push(code);
     }

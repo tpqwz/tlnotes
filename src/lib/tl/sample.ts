@@ -1,4 +1,10 @@
 import { linkPreview, type Book, type Note } from "@/lib/tl/model";
+import { ageNotes } from "@/lib/tl/ages";
+
+/** The sample life was born on this day. The age periods are what the birthday wizard would have written. */
+const SAMPLE_BORN = { year: 1998, month: 6, day: 12 };
+/** Years of age kept after the one now under way, so the lines run past the present. */
+const SAMPLE_AGES_AHEAD = 12;
 
 function at(year: number, month: number, day = 1) {
   return new Date(year, month - 1, day, 9, 0, 0, 0).getTime();
@@ -209,6 +215,7 @@ export function sampleNotes(now: number): Note[] {
   const lease = onDay(now, 80);
   const reading = onDay(now, 6);
   return [
+    ...ageNotes(SAMPLE_BORN, now, SAMPLE_AGES_AHEAD),
     ...moreLife(),
     note("sample-childhood", "period", "The house with the long hall", at(2004, 1, 1), {
       tags: ["home"],

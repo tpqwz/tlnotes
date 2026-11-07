@@ -1,5 +1,6 @@
 import type { Note, PartialDate, SpanDate } from "@/lib/tl/model";
 import { isSpan } from "@/lib/tl/model";
+import { formatUiDate } from "@/lib/tl/language";
 
 const PRODID = "-//TLNotes//EN";
 const HOST = "tlnotes.app";
@@ -155,35 +156,167 @@ export function notesToIcs(notes: Note[], now = Date.now()) {
   return lines.map(fold).join("\r\n") + "\r\n";
 }
 
-function parseDate(value: string) {
-  const match = /^(\d{4})(\d{2})(\d{2})/.exec(value);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return { year, month, day };
-}
-
 function dayIndex(date: { year: number; month: number; day: number }) {
   return Math.round(Date.UTC(date.year, date.month - 1, date.day) / 86_400_000);
 }
 
-function blockToNote(kind: "VEVENT" | "VTODO", fields: Record<string, string>): Note | null {
-  const content = (fields.SUMMARY ?? "").trim();
-  if (!content) return null;
-  const start = fields.DTSTART ? parseDate(fields.DTSTART) : null;
-  const end = fields.DTEND ? parseDate(fields.DTEND) : null;
-  const due = fields.DUE ? parseDate(fields.DUE) : null;
-  const tags = (fields.CATEGORIES ?? "")
+type Civil = { year: number; month: number; day: number };
+type Clock = { hour: number; minute: number };
+type When = { date: Civil; time: Clock | null; zone: string };
+type Raw = { value: string; params: string };
+
+function parseWhen(value: string, params: string): When | null {
+  const match = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?)?/.exec(value.trim());
+  if (!match) return null;
+  let year = Number(match[1]);
+  let month = Number(match[2]);
+  let day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const dated = /VALUE=DATE(?:;|$)/i.test(params) && match[4] == null;
+  let time: Clock | null = !dated && match[4] != null ? { hour: Number(match[4]), minute: Number(match[5]) } : null;
+  const zone = (/TZID=(?:"([^"]+)"|([^;:]+))/i.exec(params)?.[1] ?? /TZID=(?:"([^"]+)"|([^;:]+))/i.exec(params)?.[2] ?? "").trim();
+  if (time && /Z$/i.test(value.trim())) {
+    const moment = new Date(Date.UTC(year, month - 1, day, time.hour, time.minute, Number(match[6] ?? 0)));
+    year = moment.getFullYear();
+    month = moment.getMonth() + 1;
+    day = moment.getDate();
+    time = { hour: moment.getHours(), minute: moment.getMinutes() };
+  }
+  return { date: { year, month, day }, time, zone: time ? zone : "" };
+}
+
+function sameDay(a: Civil, b: Civil) {
+  return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+function dayBefore(date: Civil): Civil {
+  const last = new Date(Date.UTC(date.year, date.month - 1, date.day) - 86_400_000);
+  return { year: last.getUTCFullYear(), month: last.getUTCMonth() + 1, day: last.getUTCDate() };
+}
+
+function writtenDay(date: Civil) {
+  return formatUiDate(new Date(date.year, date.month - 1, date.day, 12), {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function writtenClock(time: Clock) {
+  return `${pad(time.hour)}:${pad(time.minute)}`;
+}
+
+function zoneWord(zone: string) {
+  const last = zone.split("/").pop()?.replaceAll("_", " ").trim() ?? "";
+  return last;
+}
+
+function whenLines(start: When | null, end: When | null, due: boolean) {
+  const when = start;
+  if (!when) return [] as string[];
+  const zone = zoneWord(when.zone);
+  const suffix = zone ? `, ${zone}` : "";
+  if (when.time && end?.time) {
+    const range = `${writtenClock(when.time)}–${writtenClock(end.time)}${suffix}`;
+    if (sameDay(when.date, end.date)) return [writtenDay(when.date), range];
+    return [`${writtenDay(when.date)}, ${writtenClock(when.time)} – ${writtenDay(end.date)}, ${writtenClock(end.time)}${suffix}`];
+  }
+  if (when.time) return [due ? `Due ${writtenDay(when.date)}, ${writtenClock(when.time)}${suffix}` : writtenDay(when.date), ...(due ? [] : [`${writtenClock(when.time)}${suffix}`])];
+  if (!due && end && !end.time) {
+    const last = dayBefore(end.date);
+    if (!sameDay(when.date, last) && dayIndex(last) > dayIndex(when.date)) return [`${writtenDay(when.date)} – ${writtenDay(last)}`];
+  }
+  return [due ? `Due ${writtenDay(when.date)}` : writtenDay(when.date)];
+}
+
+function repeatLine(rule: string) {
+  const parts = Object.fromEntries(
+    rule
+      .split(";")
+      .map((part) => part.split("="))
+      .filter((pair) => pair[0])
+      .map(([key, value]) => [key.toUpperCase(), value ?? ""]),
+  );
+  const unit: Record<string, [string, string]> = {
+    DAILY: ["daily", "days"],
+    WEEKLY: ["weekly", "weeks"],
+    MONTHLY: ["monthly", "months"],
+    YEARLY: ["yearly", "years"],
+  };
+  const name = unit[parts.FREQ?.toUpperCase() ?? ""];
+  if (!name) return "";
+  const interval = Number(parts.INTERVAL || "1");
+  let line = interval > 1 && Number.isFinite(interval) ? `Repeats every ${interval} ${name[1]}` : `Repeats ${name[0]}`;
+  if (parts.COUNT && /^\d+$/.test(parts.COUNT)) line += `, ${parts.COUNT} times`;
+  else if (parts.UNTIL) {
+    const until = parseWhen(parts.UNTIL, "");
+    if (until) line += `, until ${writtenDay(until.date)}`;
+  }
+  return line;
+}
+
+function named(params: string, key: string) {
+  const match = new RegExp(`${key}=(?:"([^"]*)"|([^;]+))`, "i").exec(params);
+  return (match?.[1] ?? match?.[2] ?? "").trim();
+}
+
+function person(raw: Raw | undefined) {
+  if (!raw) return "";
+  const name = named(raw.params, "CN");
+  const mail = raw.value.replace(/^mailto:/i, "").trim();
+  return name || mail;
+}
+
+function eventBody(summary: string, groups: string[][]) {
+  const title = summary.trim();
+  const blocks: string[] = [];
+  for (const group of groups) {
+    const lines = group.map((item) => item.trim()).filter(Boolean);
+    if (lines.length === 0) continue;
+    const text = lines.join("\n");
+    if (text === title || blocks.includes(text)) continue;
+    if (/^https?:\/\//i.test(text) && blocks.some((block) => block.includes(text))) continue;
+    blocks.push(text);
+  }
+  return blocks.length > 0 ? `${title}\n\n${blocks.join("\n\n")}` : title;
+}
+
+function blockToNote(kind: "VEVENT" | "VTODO", fields: Record<string, Raw>): Note | null {
+  const summary = (fields.SUMMARY?.value ?? "").trim();
+  if (!summary) return null;
+  const start = fields.DTSTART ? parseWhen(fields.DTSTART.value, fields.DTSTART.params) : null;
+  const end = fields.DTEND ? parseWhen(fields.DTEND.value, fields.DTEND.params) : null;
+  const due = fields.DUE ? parseWhen(fields.DUE.value, fields.DUE.params) : null;
+  const startDay = start?.date ?? null;
+  const endDay = end?.date ?? null;
+  const dueDay = due?.date ?? null;
+  const tags = (fields.CATEGORIES?.value ?? "")
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
-  const id = fields.UID ? idFromUid(fields.UID.trim()) : crypto.randomUUID();
+  const id = fields.UID?.value ? idFromUid(fields.UID.value.trim()) : crypto.randomUUID();
   const deadline = id.endsWith("-due");
   const noteId = deadline ? id.slice(0, -4) : id;
-  const marker = (fields["X-TLNOTES-TYPE"] ?? "").toLowerCase();
+  const marker = (fields["X-TLNOTES-TYPE"]?.value ?? "").toLowerCase();
+  const own = marker === "event" || marker === "task" || marker === "period";
   const now = Date.now();
+  const task = kind === "VTODO" || deadline || marker === "task";
+  const status = (fields.STATUS?.value ?? "").toUpperCase();
+  const description = fields.DESCRIPTION?.value?.trim() ?? "";
+  const location = fields.LOCATION?.value?.trim() ?? "";
+  const link = (fields.URL?.value || fields["X-GOOGLE-CONFERENCE"]?.value || fields.CONFERENCE?.value || "").trim();
+  const content = own
+    ? summary
+    : eventBody(summary, [
+        [status === "CANCELLED" ? "Cancelled" : status === "TENTATIVE" ? "Tentative" : ""],
+        whenLines(task ? (due ?? start) : start, task ? null : end, task),
+        [fields.RRULE ? repeatLine(fields.RRULE.value) : ""],
+        [location],
+        [description && description !== "Ongoing" ? description : ""],
+        [link],
+        [person(fields.ORGANIZER)],
+      ]);
   const base = {
     id: noteId,
     content,
@@ -192,29 +325,29 @@ function blockToNote(kind: "VEVENT" | "VTODO", fields: Record<string, string>): 
     edited: now,
   };
 
-  if (kind === "VTODO" || deadline || marker === "task") {
-    const when = due ?? start;
+  if (task) {
+    const when = dueDay ?? startDay;
     return {
       ...base,
       type: "task",
       date: when,
-      done: fields.STATUS?.toUpperCase() === "COMPLETED",
+      done: status === "COMPLETED",
     };
   }
 
-  if (marker === "period" || (start && end && dayIndex(end) - dayIndex(start) > 1)) {
-    const last = end ? new Date(Date.UTC(end.year, end.month - 1, end.day) - 86_400_000) : null;
+  if (marker === "period" || (startDay && endDay && dayIndex(endDay) - dayIndex(startDay) > 1)) {
+    const last = endDay ? dayBefore(endDay) : null;
     return {
       ...base,
       type: "period",
       date: {
-        begin: start,
-        end: last ? { year: last.getUTCFullYear(), month: last.getUTCMonth() + 1, day: last.getUTCDate() } : null,
+        begin: startDay,
+        end: last,
       },
     };
   }
 
-  return { ...base, type: "event", date: start };
+  return { ...base, type: "event", date: startDay };
 }
 
 export function parseIcs(text: string): Note[] | null {
@@ -222,7 +355,7 @@ export function parseIcs(text: string): Note[] | null {
   const unfolded = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n[ \t]/g, "");
   const notes: Note[] = [];
   let kind: "VEVENT" | "VTODO" | null = null;
-  let fields: Record<string, string> = {};
+  let fields: Record<string, Raw> = {};
 
   const finish = () => {
     if (!kind) return;
@@ -252,9 +385,10 @@ export function parseIcs(text: string): Note[] | null {
     if (!kind) continue;
     const split = line.indexOf(":");
     if (split === -1) continue;
-    const key = line.slice(0, split).split(";")[0]?.toUpperCase();
+    const head = line.slice(0, split);
+    const key = head.split(";")[0]?.toUpperCase();
     if (!key) continue;
-    fields[key] = unescapeText(line.slice(split + 1).trim());
+    fields[key] = { value: unescapeText(line.slice(split + 1).trim()), params: head.slice(key.length) };
   }
   finish();
   return notes;

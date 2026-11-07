@@ -685,6 +685,27 @@ html[data-theme="tavern"] [data-now] .rule {
   background-color: transparent;
 }
 
+html[data-theme="brutal"] button.lift:active:not(:disabled),
+html[data-theme="catalog"] button.lift:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #000;
+}
+
+html[data-theme="pocket"] button.lift:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: inset -3px -3px 0 #c4d46a, inset 3px 3px 0 #306230;
+}
+
+html[data-theme="dungeon"] button.lift:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: inset 0 3px 0 #000, inset 0 0 0 2px #8a7030;
+}
+
+html[data-theme="tavern"] button.lift:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: inset 0 3px 0 #2a140c, inset 0 0 0 2px #a07840;
+}
+
 html[data-theme="pocket"] button.lift[aria-pressed="true"],
 html[data-theme="dungeon"] button.lift[aria-pressed="true"],
 html[data-theme="tavern"] button.lift[aria-pressed="true"] {
@@ -1160,10 +1181,14 @@ html:is([data-theme="motif"], [data-theme="cde"], [data-theme="irix"]) :is(.moda
   box-shadow: var(--shadow-border);
 }
 
-html:is([data-theme="motif"], [data-theme="cde"], [data-theme="irix"]) button.lift[aria-pressed="true"],
 html:is([data-theme="motif"], [data-theme="cde"], [data-theme="irix"]) button.lift[aria-pressed="true"] {
   background: var(--m-title);
   color: var(--m-ink);
+  box-shadow: inset 1px 1px 0 var(--m-shadow), inset -1px -1px 0 var(--m-light), inset 2px 2px 0 var(--m-dark), inset -2px -2px 0 var(--m-face);
+}
+
+html:is([data-theme="motif"], [data-theme="cde"], [data-theme="irix"]) button.lift:active:not(:disabled) {
+  transform: translate(1px, 1px);
   box-shadow: inset 1px 1px 0 var(--m-shadow), inset -1px -1px 0 var(--m-light), inset 2px 2px 0 var(--m-dark), inset -2px -2px 0 var(--m-face);
 }
 
@@ -1282,11 +1307,18 @@ html[data-theme="turbo"] button.lift::first-letter {
   color: var(--chrome-key);
 }
 
-html[data-theme="turbo"] button.lift[aria-pressed="true"],
+html[data-theme="turbo"] button.lift[aria-pressed="true"] {
+  background: var(--chrome-press);
+  color: var(--color-fg);
+  border-color: var(--color-fg);
+  box-shadow: none;
+}
+
 html[data-theme="turbo"] button.lift:active {
   background: var(--chrome-press);
   color: var(--color-fg);
   border-color: var(--color-fg);
+  transform: translate(2px, 2px);
   box-shadow: none;
 }
 
@@ -1422,6 +1454,11 @@ html[data-theme="mac"] button.lift {
   background: linear-gradient(var(--color-surface), color-mix(in srgb, var(--color-surface) 70%, var(--color-fg)));
   color: var(--color-fg);
   box-shadow: inset 0 1px 0 #fff;
+}
+
+html[data-theme="mac"] button.lift:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 1px 1px 0 var(--color-muted), inset -1px -1px 0 #fff, inset 0 2px 3px rgba(0, 0, 0, 0.28);
 }
 
 html[data-theme="mac"] button.lift[aria-pressed="true"] {
@@ -1762,9 +1799,11 @@ html[data-theme="plaque"] :is(button.plaque, .plaque):hover:not(:disabled) {
   color: var(--color-fg);
 }
 
-html[data-theme="plaque"] :is(button.plaque, .plaque):active:not(:disabled) {
+html[data-theme="plaque"] :is(button.plaque, .plaque):active:not(:disabled),
+html[data-theme="plaque"] :is(button.plaque, .plaque).plaque-fill:active:not(:disabled),
+html[data-theme="plaque"] .tag-toggle:active {
   transform: translateY(1px);
-  box-shadow: inset 0 3px 5px #1e1a1638, inset 0 -2px #a6843e;
+  box-shadow: inset 0 3px 5px #1e1a1638, inset 0 1px #a6843e;
 }
 
 html[data-theme="plaque"] :is(button.plaque, .plaque)[aria-pressed="true"] {
@@ -1779,8 +1818,7 @@ html[data-theme="plaque"] :is(button.plaque, .plaque).plaque-fill {
   border-color: color-mix(in srgb, #c6a15b 50%, var(--color-border));
 }
 
-html[data-theme="plaque"] :is(button.plaque, .plaque).plaque-fill:hover:not(:disabled),
-html[data-theme="plaque"] :is(button.plaque, .plaque).plaque-fill:active:not(:disabled) {
+html[data-theme="plaque"] :is(button.plaque, .plaque).plaque-fill:hover:not(:disabled) {
   color: var(--color-primary-fg);
 }
 
@@ -1811,19 +1849,20 @@ html[data-theme="plaque"] .tag-toggle[aria-pressed="true"] {
   box-shadow: inset 0 2px 4px #1e1a162e, inset 0 -2px #c6a15b;
 }
 
-html[data-theme="plaque"] .tag-toggle:active {
-  transform: translateY(1px);
-}
-
 .scheme-pick {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.45rem;
   border: 1px solid var(--color-border);
   border-radius: 2px;
   background: var(--color-surface);
+  color: var(--color-fg);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
   box-shadow: inset 0 -2px #c6a15b;
   transition: transform 90ms, box-shadow 90ms;
 }
@@ -2265,6 +2304,19 @@ html[data-theme="offside"] :is(button.plaque, .plaque, .tag-toggle)::after {
     linear-gradient(#8d7040, #8d7040) right bottom / 1px 7px no-repeat;
 }
 
+html[data-theme="offside"] :is(button.plaque, .plaque, .tag-toggle):active:not(:disabled) {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, #e4d8c4 0%, #d3c4a8 100%);
+  box-shadow: inset 0 2px 0 #8d704080, inset 0 1px 0 #6e532466;
+}
+
+html[data-theme="offside"] :is(button.plaque, .plaque, .tag-toggle)[aria-pressed="true"]:active:not(:disabled) {
+  transform: translateY(1px);
+  color: #f6f0e4;
+  background: linear-gradient(180deg, #14110e 0%, #2a241c 100%);
+  box-shadow: inset 0 3px 0 #00000073;
+}
+
 html[data-theme="offside"] :is(button.plaque, .plaque, .tag-toggle)[aria-pressed="true"] {
   color: #f6f0e4;
   background: linear-gradient(180deg, #2a241c 0%, #14110e 72%);
@@ -2299,6 +2351,7 @@ html[data-theme="offside"] div.lift[data-kind].note-picked {
   letter-spacing: normal;
   text-transform: none;
   box-shadow: 0 1px 2px rgba(28, 25, 21, 0.08);
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out, background 80ms ease-out;
 }
 
 .theme-chip[aria-pressed="true"] {
@@ -2465,4 +2518,69 @@ html[data-theme="offside"] div.lift[data-kind].note-picked {
     linear-gradient(#8d7040, #8d7040) left bottom / 1px 6px no-repeat,
     linear-gradient(#8d7040, #8d7040) right bottom / 6px 1px no-repeat,
     linear-gradient(#8d7040, #8d7040) right bottom / 1px 6px no-repeat;
+}
+
+.theme-chip[data-sample="journal"]:active,
+.theme-chip[data-sample="original"]:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(28, 25, 21, 0.16);
+}
+
+.theme-chip[data-sample="plaque"]:active,
+.theme-chip[data-sample="deco"]:active,
+.theme-chip[data-sample="admiralty"]:active,
+.theme-chip[data-sample="chapel"]:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 3px 5px rgba(30, 26, 22, 0.28);
+}
+
+.theme-chip[data-sample="brutal"]:active,
+.theme-chip[data-sample="catalog"]:active,
+.theme-chip[data-sample="turbo"]:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #000;
+}
+
+.theme-chip[data-sample="blueprint"]:active,
+.theme-chip[data-sample="broadsheet"]:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.theme-chip[data-sample="terminal"]:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 0 0 1px #7cff6b, inset 0 3px 0 rgba(0, 0, 0, 0.65);
+}
+
+.theme-chip[data-sample="motif"]:active,
+.theme-chip[data-sample="cde"]:active,
+.theme-chip[data-sample="irix"]:active {
+  transform: translate(1px, 1px);
+  box-shadow: inset 1px 1px 0 #5a564e, inset -1px -1px 0 #ffffff, inset 2px 2px 0 #8a857c, inset -2px -2px 0 #eeeae2;
+}
+
+.theme-chip[data-sample="pocket"]:active {
+  transform: translate(1px, 1px);
+  box-shadow: inset -3px -3px 0 #c4d46a, inset 3px 3px 0 #306230;
+}
+
+.theme-chip[data-sample="dungeon"]:active {
+  transform: translate(1px, 1px);
+  box-shadow: inset 0 3px 0 #000, inset 0 0 0 2px #8a7030;
+}
+
+.theme-chip[data-sample="tavern"]:active {
+  transform: translate(1px, 1px);
+  box-shadow: inset 0 3px 0 #2a140c, inset 0 0 0 2px #a07840;
+}
+
+.theme-chip[data-sample="mac"]:active {
+  transform: translateY(1px);
+  box-shadow: inset 1px 1px 0 #8a8a8a, inset -1px -1px 0 #ffffff, inset 0 2px 3px rgba(0, 0, 0, 0.28);
+}
+
+.theme-chip[data-sample="offside"]:active {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, #e4d8c4, #d3c4a8);
+  box-shadow: inset 0 2px 0 #8d704080;
 }

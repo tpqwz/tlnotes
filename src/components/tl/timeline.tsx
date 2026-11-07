@@ -9,6 +9,7 @@ import {
 } from "@/lib/tl/model";
 import { cn, Highlight } from "@/components/tl/ui";
 import { t } from "@/lib/tl/i18n";
+import { uiNumeral } from "@/lib/tl/language";
 import { NoteCard } from "@/components/tl/note-card";
 
 type Span = {
@@ -344,7 +345,7 @@ export function Timeline({
                         className={item.kind === "day" ? "font-medium text-muted" : "font-display text-lg text-fg"}
                       >
                         {part > 0 ? " " : ""}
-                        {item.label}
+                        {item.kind === "year" ? uiNumeral(item.label) : item.label}
                       </span>
                     ))}
                   </p>
@@ -359,7 +360,7 @@ export function Timeline({
                   data-label={row.label}
                   className={cn("mb-1 font-display text-4xl leading-none text-fg", index > 0 && "mt-8")}
                 >
-                  {row.label}
+                  {uiNumeral(row.label)}
                 </h2>
               );
             }
@@ -459,7 +460,7 @@ export function Timeline({
               "scope-rail relative z-1 shrink-0 bg-rail",
               rightHanded ? "border-l border-border" : "border-r border-border",
             )}
-            aria-label="Scope"
+            aria-label={t("Scope")}
           >
             {nowTop != null && (
               <span className="rule pointer-events-none absolute inset-x-0 z-2 -translate-y-1/2 bg-primary" style={{ top: nowTop }} />
@@ -484,7 +485,7 @@ export function Timeline({
                 type="button"
                 className="group absolute"
                 style={{ top: span.top, height: span.height, width: `${laneShare}%`, left: `${span.lane * laneShare}%` }}
-                title={span.ended ? span.label : `${span.label} · ongoing`}
+                title={span.ended ? span.label : `${span.label} · ${t("ongoing")}`}
                 aria-label={`Edit period: ${span.label}`}
                 onClick={() => onEdit(span.id)}
               >
