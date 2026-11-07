@@ -2512,3 +2512,74 @@ html[data-theme="offside"] div.lift[data-kind].note-picked {
   background: linear-gradient(180deg, #e4d8c4, #d3c4a8);
   box-shadow: inset 0 2px 0 #8d704080;
 }
+
+.update-body > h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.update-body > p {
+  margin: 0.55rem 0 0;
+}
+
+.update-body > h4 {
+  margin: 1.15rem 0 0;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.update-body ul,
+.update-body ol {
+  margin: 0.45rem 0 0;
+  padding-left: 1.15rem;
+}
+
+.update-body li + li {
+  margin-top: 0.3rem;
+}
+
+.update-body blockquote {
+  margin: 0.75rem 0 0;
+  border-left: 2px solid var(--color-primary);
+  padding: 0.1rem 0 0.1rem 0.85rem;
+  color: var(--color-muted);
+}
+
+.update-body blockquote p {
+  margin: 0;
+}
+
+.update-body strong {
+  font-weight: 650;
+  color: var(--color-fg);
+}
+
+.update-body a {
+  color: var(--color-primary);
+  text-underline-offset: 0.15em;
+}
+
+.update-body aside {
+  margin-top: 0.75rem;
+  border-left: 2px solid var(--color-primary);
+  padding-left: 0.85rem;
+}
+
+.update-body .myst-label {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+

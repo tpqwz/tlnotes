@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { formatRecorded, formatSource, kindOf, mediaLine, quotationFaces, safeColor, safeHref, safeImage, safeVideo, typeLabel, type Note } from "@/lib/tl/model";
 import { shownFile } from "@/lib/tl/file-media";
 import { languageName } from "@/lib/tl/language";
+import { mystHtml } from "@/lib/tl/myst";
 import { shareQuotation, onMobile } from "@/lib/tl/share";
 import { t } from "@/lib/tl/i18n";
 import { cn, Highlight } from "@/components/tl/ui";
@@ -371,12 +372,15 @@ export function NoteCard({
             )}
             <div
               className={cn(
-                "min-w-0 text-pretty text-base leading-relaxed text-fg [overflow-wrap:anywhere] whitespace-pre-wrap",
+                "min-w-0 text-pretty text-base leading-relaxed text-fg [overflow-wrap:anywhere]",
+                note.type !== "update" && "whitespace-pre-wrap",
                 note.done && "text-muted line-through",
               )}
             >
               {note.type === "quotation" ? (
                 <QuotationBody note={note} query={query} />
+              ) : note.type === "update" ? (
+                <div className="update-body" dangerouslySetInnerHTML={{ __html: mystHtml(note.content) }} />
               ) : (
                 <Highlight text={clip(note.content)} query={query} />
               )}

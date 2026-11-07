@@ -2,6 +2,7 @@ import type { Note } from "@/lib/tl/model";
 
 const posted = new Date(2026, 9, 31, 7, 0).getTime();
 const since = new Date(2026, 10, 5, 3, 30).getTime();
+const quieter = new Date(2026, 10, 7, 5, 30).getTime();
 
 const RETIRED_UPDATES = new Set(["update-2026-10-31", "update-2026-10-31-recent"]);
 
@@ -58,6 +59,41 @@ export const UPDATE_NOTES: Note[] = [
     tags: [],
     created: since,
     edited: since,
+    date: null,
+  },
+  {
+    id: "update-2026-11-07",
+    type: "update",
+    content: [
+      "# What changed since",
+      "",
+      "A shorter journal, a fuller calendar card, and a quieter check for updates.",
+      "",
+      "## Calendar",
+      "",
+      "An imported event keeps the time, the date, and the rest in the card. That is the place, the notes, the link, who organized it, and a repeat, when the file has them.",
+      "",
+      "A calendar file this app wrote comes back as it left. Nothing is added on the way in.",
+      "",
+      "## The repertorium",
+      "",
+      "Pages, persons, books, and headwords are gone from this journal. That work continues at hyperbase.",
+      "",
+      "> An old note of one of those kinds stays stored and stays off the timeline. Restoring it says so. It is not turned into an ordinary note, and it is not deleted.",
+      "",
+      "## Checking and sharing",
+      "",
+      "A check is ready only when the published copy is **later** than this one. It says so once, then waits in Settings.",
+      "",
+      "Sharing text into the Android app shows **TLNotes** on the share sheet. The website copy gives that share a full address, so Android keeps it. An install from before that still needs the icon removed and TLNotes installed again.",
+      "",
+      "## Unchanged",
+      "",
+      "Quotations still keep the words, the original, a translator, and a source. The timeline was left where it was.",
+    ].join("\n"),
+    tags: [],
+    created: quieter,
+    edited: quieter,
     date: null,
   },
 ];
