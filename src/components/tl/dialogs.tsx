@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ALL_TYPES,
-  BOOK_FORMS,
   CORE_TYPES,
   DEFAULT_PERIOD_COLOR,
-  DESIGNATIONS,
-  PAGE_TYPES,
   PERIOD_COLORS,
   TIMELINE_TYPES,
   collectTags,
   formatRecorded,
   isSpan,
-  isPageType,
   partialFields,
   readPartial,
   safeColor,
@@ -20,13 +16,10 @@ import {
   cleanMediaFacts,
   typeLabel,
   type Filters,
-  type Book,
-  type EntityLabel,
   type MediaFacts,
   type Note,
   type QuotationLanguage,
   type QuotationSource,
-  type Statement,
 } from "@/lib/tl/model";
 import { notesToIcs } from "@/lib/tl/ics";
 import { downloadText } from "@/lib/tl/storage";
@@ -57,30 +50,7 @@ type FormState = {
   sources: QuotationSource[];
   originalLanguage: string;
   languages: QuotationLanguage[];
-  labels: EntityLabel[];
-  description: string;
-  designation: string;
-  statements: Statement[];
-  book: Book;
 };
-
-function emptyBook(): Book {
-  return {
-    subtitle: "",
-    authors: [],
-    translators: [],
-    language: "",
-    originalTitle: "",
-    originalLanguage: "",
-    form: "",
-    publisher: "",
-    place: "",
-    published: "",
-    edition: "",
-    isbn: "",
-    subjects: [],
-  };
-}
 
 function fromNote(note: Note): FormState {
   const single = note.date && !isSpan(note.date) ? partialFields(note.date) : partialFields(null);
@@ -109,11 +79,6 @@ function fromNote(note: Note): FormState {
     sources: note.sources?.map((source) => ({ ...source })) ?? [],
     originalLanguage: note.originalLanguage ?? "",
     languages: note.languages?.map((language) => ({ ...language })) ?? [],
-    labels: (note.labels ?? []).map((label) => ({ ...label })),
-    description: note.description ?? "",
-    designation: note.designation ?? "",
-    statements: (note.statements ?? []).map((item) => ({ ...item, qualifiers: item.qualifiers.map((qualifier) => ({ ...qualifier })) })),
-    book: { ...emptyBook(), ...note.book, authors: [...(note.book?.authors ?? [])], translators: [...(note.book?.translators ?? [])], subjects: [...(note.book?.subjects ?? [])] },
   };
 }
 
@@ -148,14 +113,13 @@ export function EditorDialog({
     );
   }
 
-  const family = isPageType(form.type) ? PAGE_TYPES : TIMELINE_TYPES;
   const lockedType = form.type === "update" || form.type === "image" || form.type === "video";
-  const typeOptions: string[] = [...family]
+  const typeOptions: string[] = [...TIMELINE_TYPES]
     .filter((type) => type !== "image" && type !== "video")
     .sort((a, b) => typeLabel(a).localeCompare(typeLabel(b)));
   if (!lockedType && !typeOptions.includes(form.type)) typeOptions.push(form.type);
   const existing = collectTags(corpus).filter((tag) => !form.tags.includes(tag));
-  const showPoint = !isPageType(form.type) && form.type !== "draft" && form.type !== "period";
+  const showPoint = form.type !== "draft" && form.type !== "period";
   const showPeriod = form.type === "period";
   const draft = form;
   const source = note;
@@ -228,55 +192,10 @@ export function EditorDialog({
         });
       if (languages.length > 0) next.languages = languages;
       else delete next.languages;
-      delete next.labels;
-      delete next.description;
-      delete next.designation;
-      delete next.statements;
-      delete next.book;
     } else {
       delete next.sources;
       delete next.originalLanguage;
       delete next.languages;
-    }
-    if (isPageType(draft.type)) {
-      const labels = draft.labels.map((label) => ({ text: label.text.trim(), language: label.language.trim() })).filter((label) => label.text);
-      if (labels.length > 0) next.labels = labels;
-      else delete next.labels;
-      const description = draft.description.trim();
-      if (description) next.description = description;
-      else delete next.description;
-      const designation = draft.designation.trim();
-      if (designation) next.designation = designation;
-      else delete next.designation;
-      const statements = draft.statements.filter((item) => item.property.trim() && item.value.trim());
-      if (statements.length > 0) next.statements = statements;
-      else delete next.statements;
-      if (draft.type === "book") {
-        const book = {
-          ...draft.book,
-          subtitle: draft.book.subtitle.trim(),
-          language: draft.book.language.trim(),
-          originalTitle: draft.book.originalTitle.trim(),
-          originalLanguage: draft.book.originalLanguage.trim(),
-          form: draft.book.form.trim(),
-          publisher: draft.book.publisher.trim(),
-          place: draft.book.place.trim(),
-          published: draft.book.published.trim(),
-          edition: draft.book.edition.trim(),
-          isbn: draft.book.isbn.trim(),
-          authors: draft.book.authors.map((item) => item.trim()).filter(Boolean),
-          translators: draft.book.translators.map((item) => item.trim()).filter(Boolean),
-          subjects: draft.book.subjects.map((item) => item.trim()).filter(Boolean),
-        };
-        if (Object.values(book).some((item) => (Array.isArray(item) ? item.length > 0 : item !== ""))) next.book = book;
-        else delete next.book;
-      } else delete next.book;
-    } else {
-      delete next.labels;
-      delete next.description;
-      delete next.designation;
-      delete next.statements;
-      delete next.book;
     }
     const image = draft.image.trim();
     if (image.startsWith("data:image/") || /^https:\/\//.test(image)) next.image = image;
@@ -500,95 +419,6 @@ export function EditorDialog({
           </div>
         )}
 
-        {(form.type === "page" || form.type === "headword" || form.type === "persona" || form.type === "book") && (
-          <div className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
-              {t("Designation")}
-              <select className="field" value={form.designation} onChange={(event) => patch({ designation: event.target.value })}>
-                <option value="">{t("None")}</option>
-                {DESIGNATIONS.map((item) => (
-                  <option key={item} value={item}>
-                    {t(item)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <input className="field" placeholder={t("A small picture address")} value={form.image} onChange={(event) => patch({ image: event.target.value })} />
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
-              {t("Description")}
-              <input
-                className="field"
-                value={form.description}
-                onChange={(event) => patch({ description: event.target.value })}
-              />
-            </label>
-            <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-1">
-              <p className="text-sm font-medium text-fg">{form.type === "headword" ? t("Headword") : form.type === "persona" ? t("Name") : t("Titles")}</p>
-              <InfoButton
-                title={t("About this type")}
-                text={
-                  form.type === "headword"
-                    ? t("The first title is the headword. Another title may be another form, or the same word in another language.")
-                    : form.type === "persona"
-                      ? t("A person, kept in the repertorium. The title is the name.")
-                      : form.type === "book"
-                        ? t("A book. The title is its name. Authors and subjects are names of other pages.")
-                        : t("MyST. A cross-reference is {doc}`Another page` or [[Another page]]. A note begins with :::{note}.")
-                }
-              />
-            </div>
-              {form.labels.map((label, index) => (
-                <div key={`${label.language}:${label.text}:${index}`} className="flex flex-col gap-2 rounded-xl bg-bg px-3 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold tracking-wide text-muted uppercase">{index === 0 ? t("Title") : t("Another title")}</p>
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-muted"
-                      onClick={() => patch({ labels: form.labels.filter((_, item) => item !== index) })}
-                    >
-                      {t("Remove")}
-                    </button>
-                  </div>
-                  <input
-                    className="field"
-                    aria-label={index === 0 ? t("Title") : t("Title {n}", { n: index + 1 })}
-                    placeholder={t("The name in this language")}
-                    value={label.text}
-                    onChange={(event) =>
-                      patch({
-                        labels: form.labels.map((item, itemIndex) => (itemIndex === index ? { ...item, text: event.target.value } : item)),
-                      })
-                    }
-                  />
-                  <input
-                    className="field"
-                    aria-label={index === 0 ? t("Language of the title") : t("Language of title {n}", { n: index + 1 })}
-                    placeholder={t("Language")}
-                    value={label.language}
-                    onChange={(event) =>
-                      patch({
-                        labels: form.labels.map((item, itemIndex) =>
-                          itemIndex === index ? { ...item, language: event.target.value } : item,
-                        ),
-                      })
-                    }
-                  />
-                </div>
-              ))}
-              <button
-                type="button"
-                className="self-start text-sm font-semibold text-primary"
-                onClick={() => patch({ labels: [...form.labels, { text: "", language: "" }] })}
-              >
-                {t("Add a title")}
-              </button>
-            </div>
-            {form.type === "book" && <BookFields book={form.book} onChange={(book) => patch({ book })} />}
-            <StatementFields statements={form.statements} onChange={(statements) => patch({ statements })} />
-          </div>
-        )}
-
         {showPoint && (
           <DateFields
             label={dateLabel(form.type)}
@@ -763,10 +593,6 @@ function contentLabel(type: string) {
   if (type === "task") return t("Task");
   if (type === "event") return t("What happened");
   if (type === "period") return t("Period");
-  if (type === "book") return t("Book");
-  if (type === "persona") return t("Persona");
-  if (type === "headword") return t("Entry");
-  if (type === "page") return t("Page");
   if (type === "draft") return t("Draft");
   if (type === "image") return t("Caption");
   if (type === "video") return t("Caption");
@@ -780,10 +606,6 @@ function contentPlaceholder(type: string) {
   if (type === "dream") return t("What you dreamt");
   if (type === "task") return t("What is to be done");
   if (type === "period") return t("The span, in a few words");
-  if (type === "book") return t("What the book is, in MyST");
-  if (type === "persona") return t("Who they are, in MyST");
-  if (type === "headword") return t("The senses, or what you want remembered");
-  if (type === "page") return t("The page, in MyST");
   if (type === "image") return t("A few words, if you want");
   if (type === "video") return t("A few words, if you want");
   return "";
@@ -793,7 +615,6 @@ function dateLabel(type: string) {
   if (type === "task") return t("Due, if you want one");
   if (type === "dream") return t("When it was dreamt");
   if (type === "quotation" || type === "link") return t("When it belongs, if you want");
-  if (type === "headword" || type === "page") return t("When it belongs, if you want");
   if (type === "event") return t("When it happened");
   if (type === "image") return t("When it was made, if you want");
   if (type === "video") return t("When it was made, if you want");
@@ -812,10 +633,6 @@ const TYPE_HINT: Record<string, string> = {
   video: "A clip. Words are optional. The length kept is the start, up to twenty seconds.",
   update: "News of a change in TLNotes. Added for you. Not a type you can choose.",
   quotation: "The words, the language, and a source if you have one.",
-  page: "A MyST page. Titles are its names, and links are its relations.",
-  headword: "One word in the lexicon. The title is the headword.",
-  persona: "A person in the repertorium. Not a timeline note.",
-  book: "A book. The title is its name. Authors, form, and edition are the record.",
 };
 
 function blankLanguage(): QuotationLanguage {
@@ -959,144 +776,6 @@ function DateFields({
         />
       </div>
     </fieldset>
-  );
-}
-
-function StatementFields({ statements, onChange }: { statements: Statement[]; onChange: (next: Statement[]) => void }) {
-  const [property, setProperty] = useState("");
-  const [value, setValue] = useState("");
-  const [qualifier, setQualifier] = useState("");
-  const [qualifierValue, setQualifierValue] = useState("");
-  const [source, setSource] = useState("");
-
-  function add() {
-    const name = property.trim();
-    const stated = value.trim();
-    if (!name || !stated) return;
-    onChange([
-      ...statements,
-      {
-        id: crypto.randomUUID(),
-        property: name,
-        value: stated,
-        qualifiers: qualifier.trim() && qualifierValue.trim() ? [{ property: qualifier.trim(), value: qualifierValue.trim() }] : [],
-        source: source.trim(),
-        sourceUrl: "",
-      },
-    ]);
-    setProperty("");
-    setValue("");
-    setQualifier("");
-    setQualifierValue("");
-    setSource("");
-  }
-
-  return (
-    <div>
-      <div className="flex items-center gap-1">
-        <p className="text-sm font-medium text-fg">{t("Statements")}</p>
-        <InfoButton title={t("Statements")} text={t("A property, a value, and only the qualifier and source that change the claim.")} />
-      </div>
-      {statements.length > 0 && (
-        <ul className="mt-2 flex flex-col gap-1.5">
-          {statements.map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-3 text-sm">
-              <span>
-                <span className="text-muted">{item.property}.</span> {item.value}
-                {item.qualifiers.length > 0 && (
-                  <span className="text-muted"> ({item.qualifiers.map((item) => `${item.property}: ${item.value}`).join("; ")})</span>
-                )}
-                {item.source && <span className="text-muted"> — {item.source}</span>}
-              </span>
-              <button type="button" className="shrink-0 text-xs font-semibold text-muted" onClick={() => onChange(statements.filter((other) => other.id !== item.id))}>
-                {t("Remove")}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <input className="field" placeholder={t("Property")} value={property} onChange={(event) => setProperty(event.target.value)} />
-        <input className="field" placeholder={t("Value")} value={value} onChange={(event) => setValue(event.target.value)} />
-        <input className="field" placeholder={t("Qualifier, if it matters")} value={qualifier} onChange={(event) => setQualifier(event.target.value)} />
-        <input className="field" placeholder={t("Qualifier value")} value={qualifierValue} onChange={(event) => setQualifierValue(event.target.value)} />
-        <input className="field sm:col-span-2" placeholder={t("Source")} value={source} onChange={(event) => setSource(event.target.value)} />
-      </div>
-      <button type="button" className={`${btnSurface} mt-2`} onClick={add}>
-        {t("Add statement")}
-      </button>
-    </div>
-  );
-}
-
-function BookFields({ book, onChange }: { book: Book; onChange: (next: Book) => void }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium text-fg">{t("The book")}</p>
-      <input className="field" placeholder={t("Subtitle")} value={book.subtitle} onChange={(event) => onChange({ ...book, subtitle: event.target.value })} />
-      <NameList label={t("Authors")} values={book.authors} placeholder={t("An author")} onChange={(authors) => onChange({ ...book, authors })} />
-      <NameList label={t("Translators")} values={book.translators} placeholder={t("A translator")} onChange={(translators) => onChange({ ...book, translators })} />
-      <div className="grid gap-2 sm:grid-cols-2">
-        <input className="field" placeholder={t("Language")} value={book.language} onChange={(event) => onChange({ ...book, language: event.target.value })} />
-        <select className="field" value={book.form} onChange={(event) => onChange({ ...book, form: event.target.value })}>
-          <option value="">{t("Form")}</option>
-          {BOOK_FORMS.map((form) => (
-            <option key={form} value={form}>
-              {t(form)}
-            </option>
-          ))}
-        </select>
-        <input className="field" placeholder={t("Original title")} value={book.originalTitle} onChange={(event) => onChange({ ...book, originalTitle: event.target.value })} />
-        <input className="field" placeholder={t("Original language")} value={book.originalLanguage} onChange={(event) => onChange({ ...book, originalLanguage: event.target.value })} />
-        <input className="field" placeholder={t("Published")} value={book.published} onChange={(event) => onChange({ ...book, published: event.target.value })} />
-        <input className="field" placeholder={t("Edition")} value={book.edition} onChange={(event) => onChange({ ...book, edition: event.target.value })} />
-        <input className="field" placeholder={t("Publisher")} value={book.publisher} onChange={(event) => onChange({ ...book, publisher: event.target.value })} />
-        <input className="field" placeholder={t("Place")} value={book.place} onChange={(event) => onChange({ ...book, place: event.target.value })} />
-        <input className="field sm:col-span-2" placeholder={t("ISBN, if this is one printing")} value={book.isbn} onChange={(event) => onChange({ ...book, isbn: event.target.value })} />
-      </div>
-      <NameList label={t("Subjects")} values={book.subjects} placeholder={t("A subject")} onChange={(subjects) => onChange({ ...book, subjects })} />
-    </div>
-  );
-}
-
-function NameList({ label, values, placeholder, onChange }: { label: string; values: string[]; placeholder: string; onChange: (next: string[]) => void }) {
-  const [draft, setDraft] = useState("");
-  function add() {
-    const next = draft.trim();
-    if (!next || values.includes(next)) return;
-    onChange([...values, next]);
-    setDraft("");
-  }
-  return (
-    <div>
-      <p className="text-sm text-muted">{label}</p>
-      {values.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {values.map((value) => (
-            <button key={value} type="button" className="rounded-full bg-bg px-2.5 py-1 text-sm" onClick={() => onChange(values.filter((item) => item !== value))}>
-              {value} ×
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="mt-1 flex gap-2">
-        <input
-          className="field"
-          placeholder={placeholder}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              add();
-            }
-          }}
-        />
-        <button type="button" className={btnSurface} onClick={add}>
-          {t("Add")}
-        </button>
-      </div>
-    </div>
   );
 }
 

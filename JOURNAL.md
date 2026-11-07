@@ -1,6 +1,6 @@
 # TLNotes — what to keep, and what to do next
 
-A private timeline. Notes stay on the device. The repertorium was taken out on purpose and belongs in another app.
+A private timeline. Notes stay on the device. The repertorium was taken out on purpose. That work continues at hyperbase and is not part of this journal.
 
 Read this before a large change. Update it when a feature lands, is dropped, or moves up the list. Then make a restore point.
 
@@ -18,7 +18,7 @@ Read this before a large change. Update it when a feature lands, is dropped, or 
 
 ## Out on purpose
 
-- Repertorium, shelves, Bring in, and the wiki button.
+- Repertorium: pages, persons, books, headwords, shelves, Bring in, and the wiki. Do not rebuild it here. Old notes of those types stay in a backup and stay off the timeline. They are not turned into ordinary notes.
 - Graph query.
 - Sync in a browser or an ordinary PWA.
 

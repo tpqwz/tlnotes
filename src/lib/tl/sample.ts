@@ -1,4 +1,4 @@
-import { linkPreview, type Book, type Note } from "@/lib/tl/model";
+import { linkPreview, type Note } from "@/lib/tl/model";
 import { ageNotes } from "@/lib/tl/ages";
 
 /** The sample life was born on this day. The age periods are what the birthday wizard would have written. */
@@ -61,66 +61,6 @@ function line(
         url: "",
       },
     ],
-  });
-}
-
-function person(id: string, name: string, aliases: string[], year: number, body: string, language: string): Note {
-  return note(id, "persona", body, at(year, 1, 1), {
-    tags: ["reading"],
-    date: { year, month: null, day: null },
-    designation: "person",
-    description: name,
-    labels: [{ text: name, language }, ...aliases.map((text) => ({ text, language: "" }))],
-  });
-}
-
-function book(
-  id: string,
-  title: string,
-  year: number,
-  body: string,
-  record: Partial<Book> & Pick<Book, "authors" | "language" | "form">,
-  aliases: { text: string; language: string }[] = [],
-): Note {
-  return note(id, "book", body, at(year, 1, 1), {
-    tags: ["reading"],
-    date: { year, month: null, day: null },
-    description: body.split("\n")[0] ?? "",
-    labels: [{ text: title, language: record.language }, ...aliases],
-    book: {
-      subtitle: "",
-      translators: [],
-      originalTitle: "",
-      originalLanguage: "",
-      publisher: "",
-      place: "",
-      published: String(year < 0 ? `${Math.abs(year)} BCE` : year),
-      edition: "",
-      isbn: "",
-      subjects: [],
-      ...record,
-    },
-  });
-}
-
-function headword(id: string, word: string, language: string, year: number, gloss: string, speech: string): Note {
-  return note(id, "headword", gloss, at(year, 1, 1), {
-    tags: ["reading"],
-    date: { year, month: null, day: null },
-    description: gloss,
-    labels: [{ text: word, language }],
-    statements: [{ id: `${id}-speech`, property: "part of speech", value: speech, qualifiers: [], source: "", sourceUrl: "" }],
-  });
-}
-
-function shelfLink(id: string, title: string, url: string, year: number, attachedTo: string): Note {
-  return note(id, "link", title, at(year, 1, 1), {
-    tags: ["reading"],
-    date: { year, month: null, day: null },
-    url,
-    preview: linkPreview(url) ?? undefined,
-    attachedTo,
-    labels: [{ text: title, language: "English" }],
   });
 }
 
@@ -492,30 +432,6 @@ export function sampleNotes(now: number): Note[] {
       tags: ["home"],
       date: lease,
     }),
-    note("sample-page-grove", "page", "The apartment faced the train.\n\nThe kitchen is described in {doc}`The kitchen window`.\n\n:::{note}\nThe lease ran longer than the quiet.\n:::", at(2020, 2, 2), {
-      tags: ["home"],
-      labels: [{ text: "Grove", language: "" }, { text: "The apartment on Grove", language: "" }],
-      description: "A page for the rooms, not the years.",
-      date: { year: 2020, month: 2, day: 2 },
-    }),
-    note("sample-page-window", "page", "The light is best before eight.\n\nIt belongs with {doc}`Grove`.", at(2020, 2, 3), {
-      tags: ["home", "morning"],
-      labels: [{ text: "The kitchen window", language: "" }],
-      description: "What the window kept.",
-      date: { year: 2020, month: 2, day: 3 },
-    }),
-    note("sample-head-oculus", "headword", "The round opening at the crown of a dome.\n\nThe rain that falls through it belongs to the room.", at(2022, 4, 18), {
-      tags: ["travel"],
-      date: { year: 2022, month: 4, day: 18 },
-      description: "A round opening, especially at the crown of a dome.",
-      labels: [
-        { text: "oculus", language: "Latin" },
-        { text: "eye", language: "English" },
-      ],
-      statements: [
-        { id: "sample-oculus-speech", property: "part of speech", value: "noun", qualifiers: [], source: "", sourceUrl: "" },
-      ],
-    }),
     note("sample-task-measure", "task", "Measure the landing before ordering the rail", now, {
       tags: ["work"],
       date: onDay(now, 12),
@@ -714,109 +630,5 @@ export function sampleNotes(now: number): Note[] {
       "Critique of Practical Reason",
       "Conclusion",
     ),
-    person(
-      "sample-page-heraclitus",
-      "Heraclitus",
-      ["Herakleitos"],
-      -500,
-      "Of Ephesus. What remains is quoted by other people.\n\nThe river is {doc}`The same rivers`.",
-      "Greek",
-    ),
-    person(
-      "sample-page-confucius",
-      "Confucius",
-      [],
-      -479,
-      "The Analects keep the saying, whether or not he said it in those words.\n\n{doc}`What you do not wish`",
-      "Chinese",
-    ),
-    book(
-      "sample-page-analects",
-      "Analects",
-      -450,
-      "A book of short sayings. One of them is {doc}`What you do not wish`.\n\nIt sits near {doc}`The way that can be told`, and neither explains the other.",
-      { authors: ["Confucius"], language: "Chinese", form: "handbook", subjects: ["ren"] },
-      [{ text: "Lunyu", language: "Chinese" }],
-    ),
-    book(
-      "sample-page-dao",
-      "Daodejing",
-      -400,
-      "The first lines refuse a fixed name.\n\n{doc}`The way that can be told`",
-      { authors: ["Laozi"], language: "Chinese", form: "treatise", originalTitle: "道德經", originalLanguage: "Chinese", subjects: ["dao"] },
-      [{ text: "Tao Te Ching", language: "English" }],
-    ),
-    book(
-      "sample-page-gita",
-      "Bhagavad Gita",
-      -200,
-      "A conversation on a battlefield, mostly about how to act.\n\n{doc}`Action alone`",
-      { authors: ["Vyasa"], language: "Sanskrit", form: "scripture", subjects: ["dharma"] },
-    ),
-    person(
-      "sample-page-socrates",
-      "Socrates",
-      [],
-      -399,
-      "He wrote nothing. Plato put the line in his mouth at the trial.\n\n{doc}`The unexamined life`",
-      "Greek",
-    ),
-    headword("sample-page-vanitas", "vanitas", "Latin", -300, "A word for what does not hold. The line is {doc}`Vanity of vanities`.", "noun"),
-    person("sample-page-horace", "Horace", [], -23, "The ode is advice about tomorrow, not a slogan.\n\n{doc}`Carpe diem`", "Latin"),
-    person(
-      "sample-page-marcus",
-      "Marcus Aurelius",
-      [],
-      170,
-      "Written in Greek, to himself, while he was emperor.\n\n{doc}`The universe is change`",
-      "Greek",
-    ),
-    person(
-      "sample-page-augustine",
-      "Augustine",
-      ["Augustine of Hippo"],
-      397,
-      "The first page of the Confessions already says where the rest is going.\n\n{doc}`Restless heart`",
-      "Latin",
-    ),
-    person("sample-page-rumi", "Rumi", ["Jalal al-Din Rumi"], 1270, "The Masnavi begins with a reed cut from the reed-bed.\n\n{doc}`The reed`", "Persian"),
-    person("sample-page-dante", "Dante", ["Dante Alighieri"], 1320, "The words are over a gate, not a sermon.\n\n{doc}`Abandon all hope`", "Italian"),
-    person("sample-page-basho", "Basho", ["Matsuo Basho"], 1686, "One pond, one sound.\n\n{doc}`The old pond`", "Japanese"),
-    person(
-      "sample-page-kant",
-      "Kant",
-      ["Immanuel Kant"],
-      1788,
-      "He set two things side by side and left them there.\n\n{doc}`The starry heavens`",
-      "German",
-    ),
-    person("sample-page-plato", "Plato", [], -399, "He wrote the trial down. Socrates wrote nothing.\n\n{doc}`Apology`", "Greek"),
-    person("sample-page-aristotle", "Aristotle", [], -340, "He kept the virtues in a book about how a life is aimed.\n\n{doc}`Nicomachean Ethics`", "Greek"),
-    person("sample-page-laozi", "Laozi", ["Lao Tzu"], -400, "The book is older than the biography.\n\n{doc}`Daodejing`", "Chinese"),
-    person("sample-page-zhuangzi", "Zhuangzi", ["Zhuang Zhou"], -300, "He dreamed he was a butterfly, and then was not sure.\n\n{doc}`The butterfly dream`", "Chinese"),
-    person("sample-page-archimedes", "Archimedes", [], -250, "A lever, a place, and the earth.\n\n{doc}`A place to stand`", "Greek"),
-    book("sample-book-fragments", "Fragments", -500, "What other people quoted.\n\n{doc}`The same rivers`", { authors: ["Heraclitus"], language: "Greek", form: "fragments" }),
-    book("sample-book-apology", "Apology", -399, "The speech at the trial.\n\n{doc}`The unexamined life`", { authors: ["Plato"], language: "Greek", form: "dialogue", subjects: ["Socrates"] }),
-    book("sample-book-ethics", "Nicomachean Ethics", -340, "A treatise on the aimed life.", { authors: ["Aristotle"], language: "Greek", form: "treatise", originalTitle: "Ἠθικὰ Νικομάχεια", originalLanguage: "Greek", subjects: ["arete"] }),
-    book("sample-book-zhuangzi", "Zhuangzi", -300, "The book that carries his name.\n\n{doc}`The butterfly dream`", { authors: ["Zhuangzi"], language: "Chinese", form: "treatise" }),
-    book("sample-book-dhammapada", "Dhammapada", -300, "Verses gathered under the name of the teaching.\n\n{doc}`Mind precedes`", { authors: [], language: "Pali", form: "scripture" }),
-    book("sample-book-odes", "Odes", -23, "Four books of lyrics.\n\n{doc}`Carpe diem`", { authors: ["Horace"], language: "Latin", form: "poem", originalTitle: "Carmina", originalLanguage: "Latin" }),
-    book("sample-book-meditations", "Meditations", 170, "Notes to himself, in Greek.\n\n{doc}`The universe is change`", { authors: ["Marcus Aurelius"], language: "Greek", form: "handbook", originalTitle: "Τὰ εἰς ἑαυτόν", originalLanguage: "Greek" }),
-    book("sample-book-confessions", "Confessions", 397, "A prayer that became a book.\n\n{doc}`Restless heart`", { authors: ["Augustine"], language: "Latin", form: "treatise", originalTitle: "Confessiones", originalLanguage: "Latin" }),
-    book("sample-book-masnavi", "Masnavi", 1270, "It begins with the reed.\n\n{doc}`The reed`", { authors: ["Rumi"], language: "Persian", form: "poem", originalTitle: "مثنوی", originalLanguage: "Persian" }),
-    book("sample-book-inferno", "Inferno", 1320, "The first part of the comedy. The gate speaks.\n\n{doc}`Abandon all hope`", { authors: ["Dante"], language: "Italian", form: "poem", originalTitle: "Inferno", originalLanguage: "Italian" }),
-    book("sample-book-kant", "Critique of Practical Reason", 1788, "The second critique.\n\n{doc}`The starry heavens`", { authors: ["Kant"], language: "German", form: "treatise", originalTitle: "Kritik der praktischen Vernunft", originalLanguage: "German" }, [{ text: "Kritik der praktischen Vernunft", language: "German" }]),
-    headword("sample-word-logos", "logos", "Greek", -500, "Word, account, and reason, said as one thing.", "noun"),
-    headword("sample-word-dao", "dao", "Chinese", -400, "The way that the book says cannot be the constant way.", "noun"),
-    headword("sample-word-ren", "ren", "Chinese", -479, "The humaneness the Analects keep returning to.", "noun"),
-    headword("sample-word-dharma", "dharma", "Sanskrit", -200, "What holds a thing to its own order.", "noun"),
-    headword("sample-word-arete", "arete", "Greek", -340, "Excellence of a thing at being what it is.", "noun"),
-    shelfLink("sample-link-heraclitus", "Heraclitus, Stanford Encyclopedia", "https://plato.stanford.edu/entries/heraclitus/", -500, "sample-page-heraclitus"),
-    shelfLink("sample-link-plato", "Plato, Stanford Encyclopedia", "https://plato.stanford.edu/entries/plato/", -399, "sample-page-plato"),
-    shelfLink("sample-link-aristotle", "Aristotle, Stanford Encyclopedia", "https://plato.stanford.edu/entries/aristotle/", -340, "sample-page-aristotle"),
-    shelfLink("sample-link-analects", "Analects on Wikipedia", "https://en.wikipedia.org/wiki/Analects", -450, "sample-page-analects"),
-    shelfLink("sample-link-dao", "Tao Te Ching on Wikipedia", "https://en.wikipedia.org/wiki/Tao_Te_Ching", -400, "sample-page-dao"),
-    shelfLink("sample-link-gita", "Bhagavad Gita on Wikipedia", "https://en.wikipedia.org/wiki/Bhagavad_Gita", -200, "sample-page-gita"),
-    shelfLink("sample-link-meditations", "Meditations on Wikisource", "https://en.wikisource.org/wiki/The_Meditations_of_the_Emperor_Marcus_Aurelius", 170, "sample-book-meditations"),
   ];
 }

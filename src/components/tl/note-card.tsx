@@ -5,8 +5,6 @@ import { toast } from "sonner";
 import { formatRecorded, formatSource, kindOf, mediaLine, quotationFaces, safeColor, safeHref, safeImage, safeVideo, typeLabel, type Note } from "@/lib/tl/model";
 import { shownFile } from "@/lib/tl/file-media";
 import { languageName } from "@/lib/tl/language";
-import { otherTitles } from "@/lib/tl/wiki";
-import { mystHtml } from "@/lib/tl/myst";
 import { shareQuotation, onMobile } from "@/lib/tl/share";
 import { t } from "@/lib/tl/i18n";
 import { cn, Highlight } from "@/components/tl/ui";
@@ -373,43 +371,17 @@ export function NoteCard({
             )}
             <div
               className={cn(
-                "min-w-0 text-pretty text-base leading-relaxed text-fg [overflow-wrap:anywhere]",
-                note.type !== "page" && note.type !== "headword" && note.type !== "persona" && note.type !== "book" && "whitespace-pre-wrap",
+                "min-w-0 text-pretty text-base leading-relaxed text-fg [overflow-wrap:anywhere] whitespace-pre-wrap",
                 note.done && "text-muted line-through",
               )}
             >
               {note.type === "quotation" ? (
                 <QuotationBody note={note} query={query} />
-              ) : note.type === "page" || note.type === "headword" || note.type === "persona" || note.type === "book" ? (
-                <span className="myst block" dangerouslySetInnerHTML={{ __html: mystHtml(clip(note.content)) }} />
               ) : (
                 <Highlight text={clip(note.content)} query={query} />
               )}
             </div>
           </div>
-          {(note.type === "page" || note.type === "headword" || note.type === "persona" || note.type === "book") && (note.description || kindOf(note) || otherTitles(note).length > 0) && (
-            <div className="mt-2 text-sm text-pretty text-muted">
-              {kindOf(note) ? <p className="text-xs tracking-wide uppercase">{t(kindOf(note))}</p> : null}
-              {note.description ? <p>{note.description}</p> : null}
-              {otherTitles(note).length > 0 ? (
-                <p className="mt-1">
-                  {otherTitles(note)
-                    .map((item) => (item.language ? `${item.language}: ${item.text}` : item.text))
-                    .join(" · ")}
-                </p>
-              ) : null}
-            </div>
-          )}
-          {note.statements && note.statements.some((item) => note.type !== "quotation" || item.property.trim().toLowerCase() !== "author") && (
-            <dl className="mt-2 flex flex-col gap-1 text-sm">
-              {note.statements.filter((item) => note.type !== "quotation" || item.property.trim().toLowerCase() !== "author").slice(0, 6).map((item) => (
-                <div key={item.id} className="grid grid-cols-[7rem_1fr] gap-2">
-                  <dt className="text-muted">{item.property}</dt>
-                  <dd>{item.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
           {note.type === "quotation" && kindOf(note) ? (
             <p className="mt-2 text-xs tracking-wide text-muted uppercase">{t(kindOf(note))}</p>
           ) : null}

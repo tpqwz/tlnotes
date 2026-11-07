@@ -2,7 +2,7 @@ import { linkPreview, type LinkPreview, type Note } from "@/lib/tl/model";
 import { smallImage } from "@/lib/tl/small-image";
 import { keepsFiles } from "@/lib/tl/native-sync";
 
-const AGENT = "TLNotes/1.0 (personal repertorium; local pictures)";
+const AGENT = "TLNotes/1.0 (local journal; local pictures)";
 const tried = new Set<string>();
 
 export function retryPreview(id: string, url: string) {

@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import { citedQuotation, quotationFaces, type Note } from "./model.ts";
 import { applyLanguage, formatUiDate, languageChoices, languageCode, languageMatches, languageName, parseRoman, romanNumeral, speaksLanguage, SPOKEN } from "./language.ts";
 import { t } from "./i18n.ts";
-import { passages } from "./wiki.ts";
 import { smallImage } from "./small-image.ts";
 
 function quote(partial: Partial<Note> & Pick<Note, "content">): Note {
@@ -187,29 +186,6 @@ describe("quotation lead", () => {
     assert.equal(quotationFaces(note).primary, "carpe diem");
     assert.equal(quotationFaces(note).showOriginal, false);
     applyLanguage("system");
-  });
-});
-
-describe("passages", () => {
-  it("gathers a quotation whose source names the book", () => {
-    const book: Note = {
-      id: "book",
-      type: "book",
-      content: "A speech.",
-      tags: [],
-      created: 1,
-      edited: 1,
-      date: null,
-      labels: [{ text: "Apology", language: "en" }],
-    };
-    const line = quote({
-      id: "line",
-      content: "ὁ δὲ ἀνεξέταστος βίος",
-      sources: [{ id: "s", author: "Socrates", work: "Plato, Apology", container: "", edition: "", locator: "38a", published: "", url: "" }],
-    });
-    const other = quote({ id: "other", content: "elsewhere", sources: [{ id: "s2", author: "Horace", work: "Odes", container: "", edition: "", locator: "", published: "", url: "" }] });
-    const found = passages(book, [book, line, other]);
-    assert.deepEqual(found.map((item) => item.id), ["line"]);
   });
 });
 
