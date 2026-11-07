@@ -930,7 +930,8 @@ export function TimelineApp() {
     if (!note) return;
     const { trashedAt: _trashed, ...restored } = note;
     patch({ notes: [...current.notes, restored], trash: current.trash.filter((item) => item.id !== id) });
-    toast.success(t("Note restored"));
+    if (isPageType(restored.type)) toast(t("Restored. It stays off the timeline."));
+    else toast.success(t("Note restored"));
   }
 
   function deleteForever(id: string) {

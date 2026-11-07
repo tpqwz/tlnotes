@@ -1,5 +1,5 @@
 import { RotateCcw, X } from "lucide-react";
-import { formatTrashed, typeLabel, type Note } from "@/lib/tl/model";
+import { formatTrashed, isPageType, typeLabel, type Note } from "@/lib/tl/model";
 import { t } from "@/lib/tl/i18n";
 import { blendNotes, rankNotes } from "@/lib/tl/search";
 import { btnGhost } from "@/components/tl/ui";
@@ -43,6 +43,9 @@ export function TrashView({
                 {typeLabel(note.type)}
                 {note.trashedAt ? ` · ${t("Trashed {when}", { when: formatTrashed(note.trashedAt) })}` : ""}
               </p>
+              {isPageType(note.type) ? (
+                <p className="mt-2 text-sm text-pretty text-muted">{t("This stays off the timeline.")}</p>
+              ) : null}
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"

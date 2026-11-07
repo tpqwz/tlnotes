@@ -1,4 +1,5 @@
 import { previewPathPrefix, deployedBase } from "@/lib/preview-path-prefix";
+import { androidBuildIsNewer } from "@/lib/tl/android-update";
 import { toast } from "sonner";
 
 export const BUILD_ID = "0";
@@ -25,6 +26,8 @@ let registration: ServiceWorkerRegistration | null = null;
 let applying = false;
 let allowReload = false;
 const listeners = new Set<() => void>();
+const TOLD = "tlnotes.update-told";
+let toldThisLoad = "";
 
 function emit(next: PwaSnapshot) {
   snapshot = next;
@@ -63,14 +66,19 @@ function publish(update: PwaUpdate = snapshot.update) {
   });
 }
 
-function markReady() {
+function markReady(stamp: string) {
   publish("ready");
+  if (!stamp || toldThisLoad === stamp) return;
   try {
-    if (sessionStorage.getItem("tlnotes.update-quiet") === "1") return;
-    sessionStorage.setItem("tlnotes.update-quiet", "1");
+    if (localStorage.getItem(TOLD) === stamp) {
+      toldThisLoad = stamp;
+      return;
+    }
+    localStorage.setItem(TOLD, stamp);
   } catch {
-    /* still show the notice once */
+    /* still tell once this load */
   }
+  toldThisLoad = stamp;
   toast("An update is ready. It waits in Settings, so you can export a copy first.", {
     id: "tlnotes-update",
     duration: 12000,
@@ -81,10 +89,11 @@ function markReady() {
 export async function applyUpdate() {
   toast.dismiss("tlnotes-update");
   try {
-    sessionStorage.removeItem("tlnotes.update-quiet");
+    localStorage.removeItem(TOLD);
   } catch {
     /* the reload still applies */
   }
+  toldThisLoad = "";
   allowReload = true;
   applying = true;
   const controller = navigator.serviceWorker.controller;
@@ -152,15 +161,13 @@ export async function checkForUpdate(quiet = false) {
   } catch {
     /* the published stamp is checked next */
   }
-  const dev = import.meta.env.DEV;
-  if (!dev && registration?.waiting && navigator.serviceWorker.controller) {
-    markReady();
-    return;
-  }
   try {
     const remote = await publishedStamp();
-    if (remote && remote !== BUILD_ID) markReady();
-    else if (remote) publish("current");
+    if (remote && androidBuildIsNewer(BUILD_ID, remote)) {
+      markReady(remote);
+      return;
+    }
+    if (remote) publish("current");
     else if (!quiet && snapshot.update !== "ready") publish("unconfirmed");
   } catch {
     if (!quiet && snapshot.update !== "ready") publish("unconfirmed");
@@ -189,14 +196,12 @@ function holdDevPage() {
   const original = proto.reload;
   proto.reload = function (...args: unknown[]) {
     if (allowReload) return original.apply(this, args);
-    markReady();
   };
   import.meta.hot.on("vite:beforeUpdate", (payload: { updates?: unknown[] }) => {
     if (payload.updates) payload.updates.length = 0;
-    markReady();
   });
   import.meta.hot.on("vite:beforeFullReload", () => {
-    markReady();
+    /* a preview reload would drop the journal view; it is not a published copy */
   });
 }
 
@@ -233,13 +238,13 @@ export function startPwa() {
   });
   void navigator.serviceWorker.register(workerScript()).then((reg) => {
     registration = reg;
-    if (!import.meta.env.DEV && reg.waiting && navigator.serviceWorker.controller) markReady();
+    if (!import.meta.env.DEV && reg.waiting && navigator.serviceWorker.controller) void checkForUpdate(true);
     reg.addEventListener("updatefound", () => {
       const worker = reg.installing;
       if (!worker) return;
       worker.addEventListener("statechange", () => {
         if (import.meta.env.DEV) return;
-        if (worker.state === "installed" && navigator.serviceWorker.controller) markReady();
+        if (worker.state === "installed" && navigator.serviceWorker.controller) void checkForUpdate(true);
         else if (worker.state === "redundant" && snapshot.update !== "ready") publish("idle");
       });
     });

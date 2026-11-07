@@ -10,5 +10,6 @@ describe("android page package", () => {
     assert.equal(androidBuildIsNewer(newer, older), false);
     assert.equal(androidBuildIsNewer("0", newer), true);
     assert.equal(androidBuildIsNewer(older, ""), false);
+    assert.equal(androidBuildIsNewer(older, older), false);
   });
 });

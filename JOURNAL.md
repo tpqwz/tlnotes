@@ -13,7 +13,8 @@ Read this before a large change. Update it when a feature lands, is dropped, or 
 - Composer: paperclip inside the field. Pictures and clips are shrunk before they are kept.
 - Look: a theme is the frame, and the desktop behind it has a pattern of its own. A color scheme is the palette. They are chosen apart. Motif is stippled, CDE is a paver, IRIX is a hatched indigo gradient. The set also includes journal, brutal, deco, admiralty, chapel, catalog, blueprint, terminal, broadsheet, pocket, dungeon, tavern, turbo, and Mac, plus the Turbo Vision and SCP palettes.
 - Search: the timeline search is BM25, with Stem and Fuzzy on the search itself. Meaning uses the open view, including notes that do not contain the words. Turning Meaning on loads E5 when no model is chosen. The model is fetched once and kept in the browser.
-- Settings: choices persist. Info sits behind an i, not as a paragraph under every control. Seal is optional. Updates are offered, not forced. Sync, and the choice of how a share is received, are shown only in the Android or iOS app, not in the browser or a PWA.
+- Settings: choices persist. Info sits behind an i, not as a paragraph under every control. Seal is optional. Updates are offered, not forced. A check is ready only when the published stamp is later than this copy, and it says so once for that stamp. Sync, and the choice of how a share is received, are shown only in the Android or iOS app, not in the browser or a PWA.
+- Sharing into the Android app is a text share labeled TLNotes. The website copy gives that share a full address, so Android keeps it on the sheet. An install from before that still needs the icon removed and TLNotes installed again.
 - The Android app lives in `android/` next to `package.json`. Run Capacitor from that parent folder. Do not run `cap add android`; it replaces the share and sync pieces.
 
 ## Out on purpose
@@ -25,10 +26,8 @@ Read this before a large change. Update it when a feature lands, is dropped, or 
 ## Next, in order
 
 1. Keep a restore point after every large change. 0.4.0 beta is `artifacts/restore-points/tlnotes-0.4.0-beta.zip`.
-2. Sharing into the installed Android app still has to show TLNotes on the share sheet. The choice to edit or add straight away is only in Settings on a Capacitor app, not in the browser or a PWA.
-3. Check for updates must mean a real newer copy, not a fresh notice on every open.
-4. On Android the composer should sit on the system bar, and the header should clear the camera hole.
-5. Leave the timeline's layout alone unless something there is actually broken.
+2. On Android the composer should sit on the system bar, and the header should clear the camera hole.
+3. Leave the timeline's layout alone unless something there is actually broken.
 
 ## Restore points
 
