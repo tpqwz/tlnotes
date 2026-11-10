@@ -547,6 +547,7 @@ export function NoteCard({
             {typeLabel(note.type)}
           </span>
         )}
+        {selected && <span className="pick-ring" aria-hidden="true" />}
       </div>
     </article>
     {linkMenu &&
