@@ -65,7 +65,7 @@ export function Timeline({
   pickedNow.current = picked;
   const [layout, setLayout] = useState<{ spans: Span[]; nowTop: number | null }>({ spans: [], nowTop: null });
   function arm(id: string, event: ReactPointerEvent<HTMLButtonElement>) {
-    if (!onHold || event.button !== 0) return;
+    if (!onHold || event.button !== 0 || picking) return;
     held.current = false;
     const node = event.currentTarget;
     const pointerId = event.pointerId;
@@ -117,28 +117,33 @@ export function Timeline({
       if (id) onSweep?.(id);
     }
 
+    function armGesture(gestureId: number, card: Element, pointerId: number) {
+      if (!gesture || gesture.id !== gestureId) return;
+      window.clearTimeout(gesture.timer);
+      gesture.armed = true;
+      try {
+        (card as HTMLElement).setPointerCapture(pointerId);
+      } catch {
+        /* the press already ended */
+      }
+    }
+
     function onDown(event: PointerEvent) {
       if (event.button !== 0) return;
       const target = event.target instanceof Element ? event.target : null;
       if (!target || target.closest(".pick-bar, #tl-composer")) return;
       const card = target.closest("[data-pick-id]");
+      const gestureId = event.pointerId;
       gesture = {
-        id: event.pointerId,
+        id: gestureId,
         x: event.clientX,
         y: event.clientY,
         at: Date.now(),
         armed: false,
         timer: window.setTimeout(() => {
-          if (!gesture || !card) return;
-          gesture.armed = true;
-          const node = card as HTMLElement;
-          const pointerId = event.pointerId;
-          try {
-            node.setPointerCapture(pointerId);
-          } catch {
-            /* the press already ended */
-          }
-        }, 220),
+          if (!card) return;
+          armGesture(gestureId, card, event.pointerId);
+        }, 120),
       };
     }
 
@@ -146,13 +151,18 @@ export function Timeline({
       if (!gesture || gesture.id !== event.pointerId) return;
       const dist = Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y);
       if (!gesture.armed) {
-        if (dist > 10) {
+        const elapsed = Math.max(Date.now() - gesture.at, 16);
+        const flung = dist > 14 && dist / elapsed > 0.7;
+        if (flung) {
           window.clearTimeout(gesture.timer);
           gesture = null;
+          return;
         }
-        return;
+        const card = (event.target instanceof Element ? event.target : null)?.closest("[data-pick-id]");
+        if (dist > 8 && elapsed >= 90 && card) armGesture(gesture.id, card, event.pointerId);
+        else return;
       }
-      if (dist < 8) return;
+      if (!gesture?.armed || dist < 6) return;
       swept.current = true;
       pickAt(gesture.x, gesture.y);
       pickAt(event.clientX, event.clientY);

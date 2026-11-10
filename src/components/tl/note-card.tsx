@@ -195,7 +195,7 @@ export function NoteCard({
       className="relative overflow-hidden rounded-xl"
       onContextMenu={(event) => event.preventDefault()}
     >
-      <div className="absolute inset-y-0 right-0 flex w-28">
+      <div className={cn("absolute inset-y-0 right-0 w-28", revealed ? "flex" : "hidden")}>
         <button
           type="button"
           className="flex flex-1 items-center justify-center bg-primary text-primary-fg"

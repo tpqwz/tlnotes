@@ -3,6 +3,7 @@ import type { Note } from "@/lib/tl/model";
 const posted = new Date(2026, 9, 31, 7, 0).getTime();
 const since = new Date(2026, 10, 5, 3, 30).getTime();
 const quieter = new Date(2026, 10, 7, 5, 30).getTime();
+const marked = new Date(2026, 10, 10, 17, 40).getTime();
 
 const RETIRED_UPDATES = new Set(["update-2026-10-31", "update-2026-10-31-recent"]);
 
@@ -94,6 +95,37 @@ export const UPDATE_NOTES: Note[] = [
     tags: [],
     created: quieter,
     edited: quieter,
+    date: null,
+  },
+  {
+    id: "update-2026-11-10",
+    type: "update",
+    content: [
+      "# What changed since",
+      "",
+      "A selection you can see, a quieter page, and a dungeon you can read.",
+      "",
+      "## Selection",
+      "",
+      "A picked card keeps a ring of white and black. The mark shows on every scheme and every theme.",
+      "",
+      "Once a selection is open, a drag adds the next cards sooner. A quick flick still scrolls. A tap still adds one card, or takes it back off.",
+      "",
+      "## The page",
+      "",
+      "Some themes had a pattern that crowded the notes. Those are quieter, or gone. Blueprint keeps a wide grid, and the catalog is one wood with a thin groove. Tavern is as it was.",
+      "",
+      "## Cards",
+      "",
+      "On some themes a strip of the edit and trash colors showed at the top right. It stays hidden until the card is swiped open.",
+      "",
+      "## Dungeon",
+      "",
+      "Dungeon keeps its own light ink. A light scheme no longer puts dark type on the black page.",
+    ].join("\n"),
+    tags: [],
+    created: marked,
+    edited: marked,
     date: null,
   },
 ];
