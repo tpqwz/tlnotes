@@ -16,7 +16,7 @@ Read this before a large change. Update it when a feature lands, is dropped, or 
 - Search: the timeline search is BM25, with Stem and Fuzzy on the search itself. Meaning uses the open view, including notes that do not contain the words. Turning Meaning on loads E5 when no model is chosen. The model is fetched once and kept in the browser.
 - Settings: choices persist. Info sits behind an i, not as a paragraph under every control. Seal is optional. Updates are offered, not forced. A check is ready only when the published stamp is later than this copy, and it says so once for that stamp. Sync, and the choice of how a share is received, are shown only in the Android or iOS app, not in the browser or a PWA.
 - Sharing into the Android app is a text share labeled TLNotes. The website copy gives that share a full address, so Android keeps it on the sheet. An install from before that still needs the icon removed and TLNotes installed again.
-- The Android app lives in `android/` next to `package.json`. Run Capacitor from that parent folder. Do not run `cap add android`; it replaces the share and sync pieces.
+- The Android app lives in `android/` next to `package.json`. Run Capacitor from that parent folder. Do not run `cap add android`; it replaces the share and sync pieces. The WebView draws edge to edge. The header clears the status bar and the camera hole, and the composer sits on the system bar, from the safe-area inset.
 
 ## Out on purpose
 
@@ -27,8 +27,7 @@ Read this before a large change. Update it when a feature lands, is dropped, or 
 ## Next, in order
 
 1. Keep a restore point after every large change. 0.4.0 beta is `artifacts/restore-points/tlnotes-0.4.0-beta.zip`.
-2. On Android the composer should sit on the system bar, and the header should clear the camera hole.
-3. Leave the timeline's layout alone unless something there is actually broken.
+2. Leave the timeline's layout alone unless something there is actually broken. A full window of the list, mounting only the cards near the viewport, is still open. Cards already skip layout while off screen.
 
 ## Restore points
 

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "TLNotes",
   webDir: "dist/client",
   android: {
-    adjustMarginsForEdgeToEdge: "auto",
+    adjustMarginsForEdgeToEdge: "disable",
   },
   plugins: {
     SystemBars: {

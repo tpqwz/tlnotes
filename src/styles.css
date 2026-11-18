@@ -1686,7 +1686,7 @@ textarea.field {
 }
 
 .top-safe {
-  padding-top: calc(0.5rem + max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px)));
+  padding-top: calc(0.65rem + max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px)));
   padding-left: calc(1rem + max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px)));
   padding-right: calc(1rem + max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px)));
 }
@@ -1702,11 +1702,11 @@ textarea.field {
 }
 
 .composer {
-  padding-bottom: calc(0.5rem + var(--obstruction, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: calc(0.5rem + max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px), var(--obstruction, 0px)));
 }
 
 html[data-native="android"] .composer {
-  padding-bottom: max(0.25rem, var(--obstruction, 0px));
+  padding-bottom: calc(0.35rem + max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px), var(--obstruction, 0px)));
 }
 
 .settings-page {
