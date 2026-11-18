@@ -50,6 +50,8 @@ export function SettingsView({
   onPictures,
   enterSends,
   onEnterSends,
+  windowList,
+  onWindowList,
   pagePackage,
   onPagePackage,
   onPhoneCalendar,
@@ -101,6 +103,8 @@ export function SettingsView({
   onPictures: (which: "browser" | "site", on: boolean) => void;
   enterSends: boolean;
   onEnterSends: (enterSends: boolean) => void;
+  windowList: boolean;
+  onWindowList: (windowList: boolean) => void;
   pagePackage: boolean;
   onPagePackage: (pagePackage: boolean) => void;
   onPhoneCalendar: () => void;
@@ -625,6 +629,30 @@ export function SettingsView({
             {t("Shift+Return adds")}
           </button>
         </div>
+        <p className="mt-3 text-sm text-muted">{t("The list")}</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            aria-pressed={!windowList}
+            className={!windowList ? `${btnPrimary} justify-center px-2` : `${btnSurface} justify-center px-2`}
+            onClick={() => {
+              if (windowList) onWindowList(false);
+            }}
+          >
+            {t("All cards")}
+          </button>
+          <button
+            type="button"
+            aria-pressed={windowList}
+            className={windowList ? `${btnPrimary} justify-center px-2` : `${btnSurface} justify-center px-2`}
+            onClick={() => {
+              if (!windowList) onWindowList(true);
+            }}
+          >
+            {t("Window")}
+          </button>
+        </div>
+        <p className="mt-2 text-sm text-pretty text-muted">{t("A window builds only the cards near the view. The years, the now-line, and the period rules stay.")}</p>
         <p className="mt-3 text-sm text-muted">{t("Line weight")}</p>
         <div className="flex flex-wrap gap-2">
           {RULES.map((item) => (

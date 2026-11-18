@@ -27,7 +27,7 @@ Read this before a large change. Update it when a feature lands, is dropped, or 
 ## Next, in order
 
 1. Keep a restore point after every large change. 0.4.0 beta is `artifacts/restore-points/tlnotes-0.4.0-beta.zip`.
-2. Leave the timeline's layout alone unless something there is actually broken. A full window of the list, mounting only the cards near the viewport, is still open. Cards already skip layout while off screen.
+2. Leave the timeline's layout alone unless something there is actually broken. Settings can build only the cards near the view. Off keeps every card. The years, the now-line, and the period rules stay either way.
 
 ## Restore points
 

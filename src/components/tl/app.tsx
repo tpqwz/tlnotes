@@ -1474,6 +1474,12 @@ export function TimelineApp() {
                 picturesBrowser={data.settings.picturesBrowser}
                 picturesSite={data.settings.picturesSite}
                 enterSends={data.settings.enterSends}
+                windowList={data.settings.windowList}
+                onWindowList={(windowList) => {
+                  const current = dataRef.current;
+                  if (!current) return;
+                  commit({ ...current, settings: { ...current.settings, windowList } });
+                }}
                 pagePackage={data.settings.pagePackage}
                 onPagePackage={(pagePackage) => {
                   const current = dataRef.current;
@@ -1730,6 +1736,7 @@ export function TimelineApp() {
                       tags: current.tags.includes(tag) ? current.tags.filter((item) => item !== tag) : [...current.tags, tag],
                     }))
                   }
+                  windowList={data.settings.windowList}
                 />
               ) : (
                 <Timeline
@@ -1753,6 +1760,7 @@ export function TimelineApp() {
                       tags: current.tags.includes(tag) ? current.tags.filter((item) => item !== tag) : [...current.tags, tag],
                     }))
                   }
+                  windowList={data.settings.windowList}
                 />
               )}
             </div>

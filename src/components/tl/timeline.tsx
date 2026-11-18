@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import {
   buildRows,
   getEndDate,
@@ -40,6 +40,7 @@ export function Timeline({
   picked,
   picking,
   flat,
+  windowList,
 }: {
   notes: Note[];
   query: string;
@@ -57,6 +58,7 @@ export function Timeline({
   picked?: string[];
   picking?: boolean;
   flat?: boolean;
+  windowList?: boolean;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const held = useRef(false);
@@ -445,7 +447,28 @@ export function Timeline({
                 </div>
               );
             }
-            return (
+            return windowList ? (
+              <WindowedNote
+                key={row.key}
+                noteId={row.note.id}
+                flash={flashId === row.note.id}
+                rightHanded={rightHanded}
+              >
+                <NoteCard
+                  note={row.note}
+                  query={query}
+                  flash={flashId === row.note.id}
+                  onEdit={onEdit}
+                  onTrash={onTrash}
+                  onToggleTag={onToggleTag}
+                  onToggleDone={onToggleDone}
+                  onHold={onHold}
+                  onSweep={onSweep}
+                  selected={picked?.includes(row.note.id)}
+                  picking={picking}
+                />
+              </WindowedNote>
+            ) : (
               <div key={row.key} className={cn("mb-3", rightHanded ? "mr-3" : "ml-3")}>
                 <NoteCard
                   note={row.note}
@@ -456,7 +479,7 @@ export function Timeline({
                   onToggleTag={onToggleTag}
                   onToggleDone={onToggleDone}
                   onHold={onHold}
-              onSweep={onSweep}
+                  onSweep={onSweep}
                   selected={picked?.includes(row.note.id)}
                   picking={picking}
                 />
@@ -518,6 +541,58 @@ export function Timeline({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const keptHeight = new Map<string, number>();
+
+function WindowedNote({
+  noteId,
+  flash,
+  rightHanded,
+  children,
+}: {
+  noteId: string;
+  flash: boolean;
+  rightHanded: boolean;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(flash);
+  const height = keptHeight.get(noteId) ?? 132;
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const root = node.closest("[data-timeline-scroll]");
+    const observer = new IntersectionObserver(
+      ([entry]) => setOpen(entry.isIntersecting),
+      { root: root instanceof Element ? root : null, rootMargin: "1000px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (flash) setOpen(true);
+  }, [flash]);
+
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const next = ref.current.offsetHeight;
+    if (next > 0) keptHeight.set(noteId, next);
+  });
+
+  return (
+    <div
+      ref={ref}
+      data-note-id={noteId}
+      data-pick-id={noteId}
+      className={cn("mb-3", rightHanded ? "mr-3" : "ml-3", flash && "note-flash")}
+      style={open ? undefined : { height }}
+    >
+      {open ? children : null}
     </div>
   );
 }

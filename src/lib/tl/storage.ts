@@ -205,6 +205,8 @@ export type Settings = {
   picturesBrowser: boolean;
   /** The installed site, as distinct from a browser tab. */
   picturesSite: boolean;
+  /** Build only the cards near the view. Off keeps every card in the page. */
+  windowList: boolean;
 };
 
 export type Persisted = {
@@ -235,6 +237,7 @@ export const defaultSettings = (): Settings => ({
   pagePackage: false,
   picturesBrowser: false,
   picturesSite: false,
+  windowList: false,
 });
 
 const LEGACY_LOOK: Record<string, [Theme, Scheme]> = {
@@ -336,6 +339,7 @@ export function normalizeSettings(settings: Partial<Settings> | null | undefined
     pagePackage: settings?.pagePackage === true,
     picturesBrowser: settings?.picturesBrowser === true || (settings?.picturesBrowser == null && (settings as { pictures?: boolean } | null | undefined)?.pictures === true),
     picturesSite: settings?.picturesSite === true || (settings?.picturesSite == null && (settings as { pictures?: boolean } | null | undefined)?.pictures === true),
+    windowList: settings?.windowList === true,
   };
 }
 
@@ -368,6 +372,7 @@ export function chooseSettings(stored: Partial<Settings> | null | undefined, loc
     pagePackage: saved.pagePackage === base.pagePackage ? mirror.pagePackage : saved.pagePackage,
     picturesBrowser: saved.picturesBrowser === base.picturesBrowser ? mirror.picturesBrowser : saved.picturesBrowser,
     picturesSite: saved.picturesSite === base.picturesSite ? mirror.picturesSite : saved.picturesSite,
+    windowList: saved.windowList === base.windowList ? mirror.windowList : saved.windowList,
   };
 }
 
