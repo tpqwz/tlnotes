@@ -355,7 +355,7 @@ export function SettingsView({
       <Section
         id="settings-theme"
         title="Theme"
-        about="The theme is the frame: windows, bars, and corners. It does not choose the colours."
+        about="The theme is the frame. A few themes also keep their own paper and ink, so a scheme cannot make them unreadable."
       >
         <div className="flex flex-wrap gap-2">
           {THEMES.map((item) => {
@@ -385,7 +385,7 @@ export function SettingsView({
       <Section
         id="settings-scheme"
         title="Colour scheme"
-        about="The colour scheme is the ink and the paper. It pairs with any theme."
+        about="The colour scheme is the ink and the paper. On Journal, Plaque, Offside, and the rest it pairs freely. Dungeon, Tavern, Pocket, Terminal, and Blueprint keep their own."
       >
         <div className="flex flex-wrap gap-2">
           {SCHEMES.map((item) => {

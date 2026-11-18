@@ -558,7 +558,17 @@ html[data-theme="tavern"] {
 
 html[data-theme="pocket"] body,
 html[data-theme="pocket"] .app-frame {
+  color-scheme: light;
   background-color: #8bac0f;
+  color: #0f380f;
+  --color-bg: #8bac0f;
+  --color-surface: #9bbc0f;
+  --color-fg: #0f380f;
+  --color-muted: #306230;
+  --color-primary: #0f380f;
+  --color-primary-fg: #9bbc0f;
+  --color-border: #306230;
+  --color-rail: #306230;
   background-image:
     radial-gradient(ellipse at center, transparent 55%, rgba(15, 56, 15, 0.28) 100%),
     repeating-linear-gradient(to bottom, rgba(15, 56, 15, 0.06) 0 1px, transparent 1px 3px);
@@ -584,8 +594,19 @@ html[data-theme="dungeon"] .app-frame {
   background-size: auto, 16px 16px, 16px 16px;
 }
 
-html[data-theme="tavern"] body {
+html[data-theme="tavern"] body,
+html[data-theme="tavern"] .app-frame {
+  color-scheme: dark;
   background-color: #3a2415;
+  color: #f6e4c2;
+  --color-bg: #3a2415;
+  --color-surface: #4a301c;
+  --color-fg: #f6e4c2;
+  --color-muted: #c4a27a;
+  --color-primary: #e07040;
+  --color-primary-fg: #2a140c;
+  --color-border: #6b4428;
+  --color-rail: #2a1810;
   background-image: repeating-linear-gradient(
     to bottom,
     #543622 0 11px,
@@ -604,6 +625,7 @@ html[data-theme="tavern"] :is(.rounded-full, .rounded-md, .rounded-lg, .rounded-
 html[data-theme="pocket"] :is(.lift, .modal-panel, .info-panel, #tl-composer, .field) {
   border: 3px solid #0f380f;
   background: #9bbc0f;
+  color: #0f380f;
   box-shadow: inset 3px 3px 0 #c4d46a, inset -3px -3px 0 #306230;
 }
 
@@ -980,7 +1002,17 @@ html[data-theme="catalog"] .scope-rail {
 }
 
 html[data-theme="blueprint"] .app-frame {
+  color-scheme: dark;
   background-color: #0b3a66;
+  color: #e7f2ff;
+  --color-bg: #0b3a66;
+  --color-surface: #082c4e;
+  --color-fg: #e7f2ff;
+  --color-muted: #9ec4e8;
+  --color-primary: #ffffff;
+  --color-primary-fg: #0b3a66;
+  --color-border: #7eb6e6;
+  --color-rail: #082c4e;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
@@ -1044,8 +1076,19 @@ html[data-theme="blueprint"] .scope-rail {
   box-shadow: inset 1px 0 0 #d6ecff;
 }
 
+html[data-theme="terminal"] body,
 html[data-theme="terminal"] .app-frame {
+  color-scheme: dark;
   background-color: #031406;
+  color: #7cff6b;
+  --color-bg: #031406;
+  --color-surface: #031406;
+  --color-fg: #7cff6b;
+  --color-muted: #3d9a45;
+  --color-primary: #b6ff9a;
+  --color-primary-fg: #031406;
+  --color-border: #1f6b32;
+  --color-rail: #05210c;
   background-image:
     radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.22) 100%),
     repeating-linear-gradient(to bottom, rgba(124, 255, 107, 0.045) 0 1px, transparent 1px 3px);
