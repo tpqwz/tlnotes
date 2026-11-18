@@ -7,6 +7,7 @@ Read this before a large change. Update it when a feature lands, is dropped, or 
 ## Do not lose
 
 - Timeline: scope gutter, sticky year / month / day on one line with TLNotes, NOW rule sitting just above the composer, period rules that run the full width, a quiet glow when something is added.
+- Cards skip layout and paint while they are off screen. A selection change redraws only the cards whose mark changed.
 - Types on the timeline: Note, Draft, Dream, Event, Period, Task, Link, Quote, Image, Video. Idea is gone. A picture with no words is an Image. A clip with no words is a Video. Each keeps the original file name, resolution, size, length when it is a clip, and the address when it was fetched. A video address pasted into the composer is read on add: the smallest video file, or a medium Opus track for music. When the site will not give up the file, the address, title, and picture are kept. One type showing in the filter means the composer adds that type.
 - Cards: Quote is the short label and lines up with the others. A link's address, and its preview, are not live links. A long press or a double click opens Copy, Open, and, on a phone, Share. Long unbroken text wraps.
 - Tasks: their own search and filter (tags, sort, done — no note types). Hold a card to move it. Dragging one onto another makes it a child. The grip is only a hint.

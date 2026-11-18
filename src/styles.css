@@ -2600,3 +2600,8 @@ button.note-picked {
   color: var(--color-muted);
 }
 
+
+.tl-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 7.5rem;
+}

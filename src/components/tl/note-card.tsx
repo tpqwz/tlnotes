@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Check, MoreVertical, Pencil, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,7 +37,16 @@ function clip(text: string) {
   return `${cut.trimEnd()}…`;
 }
 
-export function NoteCard({
+export const NoteCard = memo(NoteCardView, (prev, next) =>
+  prev.note === next.note &&
+  prev.query === next.query &&
+  prev.flash === next.flash &&
+  prev.plain === next.plain &&
+  prev.holdToMove === next.holdToMove &&
+  prev.selected === next.selected &&
+  prev.picking === next.picking,
+);
+function NoteCardView({
   note,
   query,
   flash,
@@ -192,7 +201,7 @@ export function NoteCard({
     <>
     <article
       data-note-id={note.id}
-      className="relative overflow-hidden rounded-xl"
+      className="tl-card relative overflow-hidden rounded-xl"
       onContextMenu={(event) => event.preventDefault()}
     >
       <div className={cn("absolute inset-y-0 right-0 w-28", revealed ? "flex" : "hidden")}>
