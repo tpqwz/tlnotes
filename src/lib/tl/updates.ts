@@ -4,6 +4,7 @@ const posted = new Date(2026, 9, 31, 7, 0).getTime();
 const since = new Date(2026, 10, 5, 3, 30).getTime();
 const quieter = new Date(2026, 10, 7, 5, 30).getTime();
 const marked = new Date(2026, 10, 10, 17, 40).getTime();
+const windowed = new Date(2026, 10, 18, 14, 0).getTime();
 
 const RETIRED_UPDATES = new Set(["update-2026-10-31", "update-2026-10-31-recent"]);
 
@@ -126,6 +127,33 @@ export const UPDATE_NOTES: Note[] = [
     tags: [],
     created: marked,
     edited: marked,
+    date: null,
+  },
+  {
+    id: "update-2026-11-18",
+    type: "update",
+    content: [
+      "# What changed since",
+      "",
+      "Themes that keep their own ink, a lighter list, and an Android frame that meets the screen.",
+      "",
+      "## Ink",
+      "",
+      "Dungeon, Tavern, Pocket, Terminal, and Blueprint keep their own paper and ink. A scheme can no longer make one of them unreadable. Journal, Plaque, Offside, and the rest still take any scheme.",
+      "",
+      "## The list",
+      "",
+      "A card that is off screen skips layout and paint. A selection redraws only the card whose mark changed.",
+      "",
+      "Settings can build only the cards near the view. That is **Window**, under Layout. **All cards** is the ordinary list, and it is the one that starts on. The years, the now-line, and the period rules stay either way.",
+      "",
+      "## Android",
+      "",
+      "The app draws to the edge of the screen. The title clears the status bar and the camera hole. The composer sits on the system bar.",
+    ].join("\n"),
+    tags: [],
+    created: windowed,
+    edited: windowed,
     date: null,
   },
 ];
