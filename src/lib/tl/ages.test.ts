@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ageNotes, lifeYears } from "./ages.ts";
+import { ageNotes, cleanAgeSets, listedAgeSets, lifeYears, replaceAgeSet } from "./ages.ts";
 import { applyLanguage } from "./language.ts";
 import { sampleNotes } from "./sample.ts";
 
@@ -94,5 +94,35 @@ describe("sample life", () => {
     assert.ok(later.length > 1);
     assert.ok(later.some((note) => note.date && "end" in note.date && note.date.end != null));
     applyLanguage("system");
+  });
+});
+
+describe("several lives", () => {
+  it("keeps a second life off the original ids, and removes only that life", () => {
+    const original = ageNotes(born, now);
+    const other = ageNotes({ year: 2010, month: 4, day: 2 }, now, 0, "anna");
+    assert.equal(original[0]?.id, "age-0");
+    assert.equal(other[0]?.id, "age-anna-0");
+    const replaced = replaceAgeSet([...original, ...other], [], ageNotes({ year: 2011, month: 1, day: 9 }, now, 0, "anna"), "anna");
+    assert.equal(replaced.notes.filter((note) => note.id.startsWith("age-anna-")).length > 0, true);
+    assert.equal(replaced.notes.some((note) => note.id === "age-0"), true);
+    assert.equal(replaced.notes.some((note) => note.id === "age-anna-0" && note.date && "begin" in note.date && note.date.begin?.year === 2011), true);
+    const gone = replaceAgeSet(replaced.notes, [{ ...other[0]!, id: "age-anna-0" }], [], "anna");
+    assert.equal(gone.notes.some((note) => note.id.startsWith("age-anna-")), false);
+    assert.equal(gone.trash.some((note) => note.id.startsWith("age-anna-")), false);
+    assert.equal(gone.notes.some((note) => note.id === "age-0"), true);
+  });
+
+  it("lists a life that was laid before names, and a saved one beside it", () => {
+    const original = ageNotes(born, now);
+    const saved = cleanAgeSets([{ id: "anna", name: "Anna", birth: { year: 2010, month: 4, day: 2 } }, { id: "anna", name: "Again", birth: { year: 2010, month: 4, day: 2 } }, { id: "bad", name: "No", birth: { year: 2010, month: 2, day: 31 } }]);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0]?.name, "Anna");
+    const listed = listedAgeSets(original, saved);
+    assert.equal(listed.length, 2);
+    assert.equal(listed[0]?.id, "anna");
+    assert.equal(listed[1]?.id, "");
+    assert.equal(listed[1]?.count, original.length);
+    assert.deepEqual(listed[1]?.birth, born);
   });
 });

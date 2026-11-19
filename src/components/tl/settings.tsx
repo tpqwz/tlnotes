@@ -3,7 +3,7 @@ import { Download, Trash2, Upload } from "lucide-react";
 import { formatBytes, typeLabel, type Note } from "@/lib/tl/model";
 import { FACE_FAMILY, FACE_LABEL, FACES, NATIVE_SCHEME, RULE_LABEL, RULES, SCHEMES, THEME_LABEL, THEME_SWATCH, THEMES, TYPE_SIZE_LABEL, TYPE_SIZES, type Face, type Rule, type Scheme, type Settings, type Theme, type TypeSize } from "@/lib/tl/storage";
 import { currentLanguage, formatUiDate, languageChoices, languageName, parseRoman, romanNumeral, speaksLanguage, systemLanguage, uiNumber } from "@/lib/tl/language";
-import { lifeYears, type Day } from "@/lib/tl/ages";
+import { lifeYears, listedAgeSets, newAgeSetId, type AgeSet } from "@/lib/tl/ages";
 import { t, tLine } from "@/lib/tl/i18n";
 import { chooseModel, embedStatus, subscribeEmbed, type EmbedStatus, type SearchModel } from "@/lib/tl/embed";
 import { SealSection } from "@/components/tl/vault";
@@ -16,6 +16,7 @@ import { btnGhost, btnInk, btnPrimary, btnSurface, InfoButton } from "@/componen
 export function SettingsView({
   notes,
   trash,
+  ageSets,
   rightHanded,
   onExport,
   onExportCalendar,
@@ -57,6 +58,7 @@ export function SettingsView({
   onPhoneCalendar,
   onSample,
   onAges,
+  onRemoveAge,
   sealed,
   passkey,
   onSeal,
@@ -69,6 +71,7 @@ export function SettingsView({
 }: {
   notes: Note[];
   trash: Note[];
+  ageSets: AgeSet[];
   rightHanded: boolean;
   onExport: () => void;
   onExportCalendar: () => void;
@@ -109,7 +112,8 @@ export function SettingsView({
   onPagePackage: (pagePackage: boolean) => void;
   onPhoneCalendar: () => void;
   onSample: () => void;
-  onAges: (birth: Day) => void;
+  onAges: (set: AgeSet) => void;
+  onRemoveAge: (id: string, name: string) => void;
   sealed: boolean;
   passkey: boolean;
   onSeal: (passphrase: string) => Promise<string>;
@@ -717,7 +721,7 @@ export function SettingsView({
         )}
       </Section>
 
-      <AgesSection onAges={onAges} />
+      <AgesSection notes={notes} saved={ageSets} onAges={onAges} onRemove={onRemoveAge} />
 
       <Section
         id="settings-sample"
@@ -732,10 +736,21 @@ export function SettingsView({
   );
 }
 
-function AgesSection({ onAges }: { onAges: (birth: Day) => void }) {
-  const [year, setYear] = useState("");
-  const [month, setMonth] = useState("");
-  const [day, setDay] = useState("");
+function AgesSection({
+  notes,
+  saved,
+  onAges,
+  onRemove,
+}: {
+  notes: Note[];
+  saved: AgeSet[];
+  onAges: (set: AgeSet) => void;
+  onRemove: (id: string, name: string) => void;
+}) {
+  const lives = listedAgeSets(notes, saved);
+  const [draft, setDraft] = useState<null | { id: string; fresh: boolean; name: string; year: string; month: string; day: string }>(
+    lives.length === 0 ? { id: "", fresh: true, name: "", year: "", month: "", day: "" } : null,
+  );
   const [editing, setEditing] = useState<"year" | "day" | null>(null);
   const [fault, setFault] = useState("");
   const label = t("Born");
@@ -751,8 +766,24 @@ function AgesSection({ onAges }: { onAges: (birth: Day) => void }) {
     const parsed = parseRoman(trimmed);
     return parsed != null && parsed >= 1 && parsed <= 9999 ? String(parsed) : trimmed;
   };
+  function openNew() {
+    setFault("");
+    setDraft({ id: "", fresh: true, name: "", year: "", month: "", day: "" });
+  }
+  function openEdit(life: (typeof lives)[number]) {
+    setFault("");
+    setDraft({
+      id: life.id,
+      fresh: false,
+      name: life.name,
+      year: life.birth ? String(life.birth.year) : "",
+      month: life.birth ? String(life.birth.month) : "",
+      day: life.birth ? String(life.birth.day) : "",
+    });
+  }
   function lay() {
-    const birth = { year: Number(year), month: Number(month), day: Number(day) };
+    if (!draft) return;
+    const birth = { year: Number(draft.year), month: Number(draft.month), day: Number(draft.day) };
     const life = lifeYears(birth, Date.now());
     if (!life.ok) {
       setFault(
@@ -765,59 +796,138 @@ function AgesSection({ onAges }: { onAges: (birth: Day) => void }) {
       return;
     }
     setFault("");
-    onAges(birth);
+    onAges({ id: draft.fresh ? newAgeSetId() : draft.id, name: draft.name.trim(), birth });
+    setDraft(null);
   }
+  const birth = draft ? { year: Number(draft.year), month: Number(draft.month), day: Number(draft.day) } : null;
+  const preview = birth ? lifeYears(birth, Date.now()) : null;
+  const editingLife = draft && !draft.fresh ? lives.find((life) => life.id === draft.id) : null;
+  const sameDay =
+    editingLife?.birth != null &&
+    birth != null &&
+    editingLife.birth.year === birth.year &&
+    editingLife.birth.month === birth.month &&
+    editingLife.birth.day === birth.day;
   return (
     <Section
       id="settings-ages"
       title="Ages"
-      about="A birthday lays one period for each year of life, from birth through the year now under way. That year stays open. Running it again replaces those periods."
+      about="Each name is one life. A birthday lays one period for each year, from birth through the year now under way. That year stays open. Laying the same life again replaces only its years."
     >
-      <fieldset>
-        <legend className="text-sm font-medium text-fg">{label}</legend>
-        <div className="mt-1.5 grid grid-cols-3 gap-2">
+      {lives.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {lives.map((life) => (
+            <li key={life.id || "plain"} className="flex items-center justify-between gap-3 rounded-xl bg-surface px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-fg">{life.name || t("Ages")}</p>
+                <p className="text-sm text-muted">
+                  {life.birth ? formatUiDate(new Date(life.birth.year, life.birth.month - 1, life.birth.day), { year: "numeric", month: "long", day: "numeric" }) : t("No birthday")}
+                  {" · "}
+                  {t("{n} years", { n: life.count })}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" className={btnSurface} onClick={() => openEdit(life)}>
+                  {t("Edit")}
+                </button>
+                <button
+                  type="button"
+                  className={btnSurface}
+                  onClick={() => {
+                    if (draft && !draft.fresh && draft.id === life.id) setDraft(null);
+                    onRemove(life.id, life.name);
+                  }}
+                >
+                  {t("Remove")}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {draft ? (
+        <div className={lives.length > 0 ? "mt-3" : ""}>
+          <label className="text-sm font-medium text-fg" htmlFor="age-name">
+            {t("Name")}
+          </label>
           <input
-            className="field"
-            inputMode="numeric"
-            placeholder={t("Year")}
-            aria-label={t("{label} year", { label })}
-            value={shown("year", year)}
-            onFocus={() => setEditing("year")}
-            onBlur={(event) => {
-              setEditing(null);
-              const next = commit(event.target.value);
-              if (next !== year) setYear(next);
-            }}
-            onChange={(event) => setYear(event.target.value)}
+            id="age-name"
+            className="field mt-1.5"
+            placeholder={t("A person")}
+            value={draft.name}
+            onChange={(event) => setDraft({ ...draft, name: event.target.value })}
           />
-          <select className="field" aria-label={t("{label} month", { label })} value={month} onChange={(event) => setMonth(event.target.value)}>
-            <option value="">{t("Month")}</option>
-            {Array.from({ length: 12 }, (_, index) => (
-              <option key={index + 1} value={String(index + 1)}>
-                {formatUiDate(new Date(2000, index, 1), { month: "long" })}
-              </option>
-            ))}
-          </select>
-          <input
-            className="field"
-            inputMode="numeric"
-            placeholder={t("Day")}
-            aria-label={t("{label} day", { label })}
-            value={shown("day", day)}
-            onFocus={() => setEditing("day")}
-            onBlur={(event) => {
-              setEditing(null);
-              const next = commit(event.target.value);
-              if (next !== day) setDay(next);
-            }}
-            onChange={(event) => setDay(event.target.value)}
-          />
+          <fieldset className="mt-3">
+            <legend className="text-sm font-medium text-fg">{label}</legend>
+            <div className="mt-1.5 grid grid-cols-3 gap-2">
+              <input
+                className="field"
+                inputMode="numeric"
+                placeholder={t("Year")}
+                aria-label={t("{label} year", { label })}
+                value={shown("year", draft.year)}
+                onFocus={() => setEditing("year")}
+                onBlur={(event) => {
+                  setEditing(null);
+                  const next = commit(event.target.value);
+                  if (next !== draft.year) setDraft({ ...draft, year: next });
+                }}
+                onChange={(event) => setDraft({ ...draft, year: event.target.value })}
+              />
+              <select className="field" aria-label={t("{label} month", { label })} value={draft.month} onChange={(event) => setDraft({ ...draft, month: event.target.value })}>
+                <option value="">{t("Month")}</option>
+                {Array.from({ length: 12 }, (_, index) => (
+                  <option key={index + 1} value={String(index + 1)}>
+                    {formatUiDate(new Date(2000, index, 1), { month: "long" })}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="field"
+                inputMode="numeric"
+                placeholder={t("Day")}
+                aria-label={t("{label} day", { label })}
+                value={shown("day", draft.day)}
+                onFocus={() => setEditing("day")}
+                onBlur={(event) => {
+                  setEditing(null);
+                  const next = commit(event.target.value);
+                  if (next !== draft.day) setDraft({ ...draft, day: next });
+                }}
+                onChange={(event) => setDraft({ ...draft, day: event.target.value })}
+              />
+            </div>
+          </fieldset>
+          {preview?.ok && !sameDay ? (
+            <p className="mt-2 text-sm text-pretty text-muted">
+              {t("{n} years, from birth through the year now under way. Years already in this life are replaced.", { n: preview.years.length })}
+            </p>
+          ) : null}
+          {preview?.ok && sameDay ? <p className="mt-2 text-sm text-pretty text-muted">{t("The years stay. Only the name is saved.")}</p> : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" className={btnSurface} onClick={lay}>
+              {sameDay ? t("Save the name") : t("Lay the years")}
+            </button>
+            {lives.length > 0 && (
+              <button
+                type="button"
+                className={btnSurface}
+                onClick={() => {
+                  setDraft(null);
+                  setFault("");
+                }}
+              >
+                {t("Cancel")}
+              </button>
+            )}
+          </div>
+          {fault ? <p className="mt-2 text-sm text-muted">{fault}</p> : null}
         </div>
-      </fieldset>
-      <button type="button" className={`${btnSurface} mt-3`} onClick={lay}>
-        {t("Lay the years")}
-      </button>
-      {fault ? <p className="mt-2 text-sm text-muted">{fault}</p> : null}
+      ) : (
+        <button type="button" className={`${btnSurface} mt-3`} onClick={openNew}>
+          {t("Add a life")}
+        </button>
+      )}
     </Section>
   );
 }

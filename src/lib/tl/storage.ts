@@ -6,6 +6,7 @@ import { isVaultOn, noteVault, openSealed, restoreSession, sealAll, sessionKey }
 import { applyLanguage, cleanLanguageSetting } from "@/lib/tl/language";
 import { rememberJournal } from "@/lib/tl/sync";
 import { NativeSync, keepsPictureBytes, nativeAndroid, nativeApp, notePictures } from "@/lib/tl/native-sync";
+import { cleanAgeSets, type AgeSet } from "@/lib/tl/ages";
 import { parkNotes, materializeNotes } from "@/lib/tl/file-media";
 
 const KEY = "tlnotes.v1";
@@ -207,6 +208,8 @@ export type Settings = {
   picturesSite: boolean;
   /** Build only the cards near the view. Off keeps every card in the page. */
   windowList: boolean;
+  /** Named lives laid from Settings. The periods themselves stay in the notes. */
+  ageSets: AgeSet[];
 };
 
 export type Persisted = {
@@ -238,6 +241,7 @@ export const defaultSettings = (): Settings => ({
   picturesBrowser: false,
   picturesSite: false,
   windowList: false,
+  ageSets: [],
 });
 
 const LEGACY_LOOK: Record<string, [Theme, Scheme]> = {
@@ -340,6 +344,7 @@ export function normalizeSettings(settings: Partial<Settings> | null | undefined
     picturesBrowser: settings?.picturesBrowser === true || (settings?.picturesBrowser == null && (settings as { pictures?: boolean } | null | undefined)?.pictures === true),
     picturesSite: settings?.picturesSite === true || (settings?.picturesSite == null && (settings as { pictures?: boolean } | null | undefined)?.pictures === true),
     windowList: settings?.windowList === true,
+    ageSets: cleanAgeSets(settings?.ageSets),
   };
 }
 
@@ -373,6 +378,7 @@ export function chooseSettings(stored: Partial<Settings> | null | undefined, loc
     picturesBrowser: saved.picturesBrowser === base.picturesBrowser ? mirror.picturesBrowser : saved.picturesBrowser,
     picturesSite: saved.picturesSite === base.picturesSite ? mirror.picturesSite : saved.picturesSite,
     windowList: saved.windowList === base.windowList ? mirror.windowList : saved.windowList,
+    ageSets: JSON.stringify(saved.ageSets) === JSON.stringify(base.ageSets) ? mirror.ageSets : saved.ageSets,
   };
 }
 

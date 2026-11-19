@@ -3,6 +3,10 @@ import { t } from "@/lib/tl/i18n";
 
 export type Day = { year: number; month: number; day: number };
 
+export type AgeSet = { id: string; name: string; birth: Day };
+
+export type ListedAge = { id: string; name: string; birth: Day | null; count: number };
+
 export type LifeYear = { age: number; begin: Day; end: Day | null };
 
 export type LifeYears =
@@ -78,16 +82,13 @@ export function lifeYears(birth: Day, now: number, ahead = 0): LifeYears {
   return { ok: true, years };
 }
 
-export function isAgeNote(note: { id: string }) {
-  return note.id.startsWith("age-");
-}
-
-/** Period notes for those years. The wording is the app language at the moment they are made. */
-export function ageNotes(birth: Day, now: number, ahead = 0): Note[] {
+/** Period notes for those years. The wording is the app language at the moment they are made.
+ *  An empty set id keeps the original `age-0` ids. Any other id is one life, and does not share those ids. */
+export function ageNotes(birth: Day, now: number, ahead = 0, setId = ""): Note[] {
   const life = lifeYears(birth, now, ahead);
   if (!life.ok) return [];
   return life.years.map((year) => ({
-    id: `age-${year.age}`,
+    id: ageNoteId(setId, year.age),
     type: "period",
     content: t("Age {n}", { n: year.age }),
     tags: ["age"],
@@ -96,4 +97,85 @@ export function ageNotes(birth: Day, now: number, ahead = 0): Note[] {
     date: { begin: year.begin, end: year.end },
     color: PERIOD_COLORS[year.age % PERIOD_COLORS.length],
   }));
+}
+
+export function ageNoteId(setId: string, age: number) {
+  return setId ? `age-${setId}-${age}` : `age-${age}`;
+}
+
+/** `age-12` is the original life. `age-k3f-12` is another. */
+export function parseAgeId(id: string): { setId: string; age: number } | null {
+  const named = /^age-([a-z0-9]+)-(\d+)$/.exec(id);
+  if (named?.[1] && named[2]) return { setId: named[1], age: Number(named[2]) };
+  const plain = /^age-(\d+)$/.exec(id);
+  if (plain?.[1]) return { setId: "", age: Number(plain[1]) };
+  return null;
+}
+
+export function isAgeNote(note: { id: string }) {
+  return parseAgeId(note.id) != null;
+}
+
+export function newAgeSetId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function cleanAgeSets(value: unknown): AgeSet[] {
+  if (!Array.isArray(value)) return [];
+  const out: AgeSet[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const raw = item as { id?: unknown; name?: unknown; birth?: unknown };
+    const id = typeof raw.id === "string" && /^[a-z0-9]{0,24}$/.test(raw.id) ? raw.id : "";
+    if (seen.has(id)) continue;
+    const birth = raw.birth as Day | undefined;
+    if (!birth || !isDay(birth)) continue;
+    seen.add(id);
+    const name = typeof raw.name === "string" ? raw.name.trim().slice(0, 60) : "";
+    out.push({ id, name, birth: { year: birth.year, month: birth.month, day: birth.day } });
+  }
+  return out;
+}
+
+/** Saved lives first, then any years still in the journal that settings does not name. */
+export function listedAgeSets(notes: Note[], saved: AgeSet[]): ListedAge[] {
+  const groups = new Map<string, Note[]>();
+  for (const note of notes) {
+    const parsed = parseAgeId(note.id);
+    if (!parsed) continue;
+    const list = groups.get(parsed.setId) ?? [];
+    list.push(note);
+    groups.set(parsed.setId, list);
+  }
+  const seen = new Set<string>();
+  const rows: ListedAge[] = [];
+  for (const set of saved) {
+    seen.add(set.id);
+    rows.push({ id: set.id, name: set.name, birth: set.birth, count: groups.get(set.id)?.length ?? 0 });
+  }
+  for (const [id, group] of groups) {
+    if (seen.has(id)) continue;
+    rows.push({ id, name: "", birth: birthFrom(group), count: group.length });
+  }
+  return rows;
+}
+
+export function replaceAgeSet(notes: Note[], trash: Note[], made: Note[], setId: string) {
+  const keep = (note: Note) => parseAgeId(note.id)?.setId !== setId;
+  return { notes: [...notes.filter(keep), ...made], trash: trash.filter(keep) };
+}
+
+function birthFrom(notes: Note[]): Day | null {
+  let best: { age: number; begin: Day } | null = null;
+  for (const note of notes) {
+    const parsed = parseAgeId(note.id);
+    const date = note.date;
+    if (!parsed || !date || !("begin" in date) || !date.begin) continue;
+    const { year, month, day } = date.begin;
+    if (year == null || month == null || day == null) continue;
+    if (!best || parsed.age < best.age) best = { age: parsed.age, begin: { year, month, day } };
+  }
+  if (!best) return null;
+  return { year: best.begin.year - best.age, month: best.begin.month, day: best.begin.day };
 }

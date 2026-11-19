@@ -9,7 +9,7 @@ import { uiNumeral } from "@/lib/tl/language";
 import { calendarNotes, notesToIcs, parseIcs } from "@/lib/tl/ics";
 import { readPhoneCalendar } from "@/lib/tl/phone-calendar";
 import { sampleNotes } from "@/lib/tl/sample";
-import { ageNotes, isAgeNote } from "@/lib/tl/ages";
+import { ageNotes, listedAgeSets, parseAgeId, replaceAgeSet, type AgeSet } from "@/lib/tl/ages";
 import { withUpdates } from "@/lib/tl/updates";
 import { finishIncomingShare, listenNativeShare, noteFromShare, peekIncomingShare, pullShare, shareAsTyped } from "@/lib/tl/share";
 import {
@@ -975,16 +975,44 @@ export function TimelineApp() {
     toast.success(t("Sample timeline added"));
   }
 
-  function layAges(birth: { year: number; month: number; day: number }) {
+  function saveAgeSet(set: AgeSet) {
     const current = dataRef.current;
     if (!current) return;
-    const made = ageNotes(birth, Date.now());
+    const made = ageNotes(set.birth, Date.now(), 0, set.id);
     if (made.length === 0) return;
-    patch({
-      notes: [...current.notes.filter((note) => !isAgeNote(note)), ...made],
-      trash: current.trash.filter((note) => !isAgeNote(note)),
-    });
+    const kept = current.settings.ageSets.find((item) => item.id === set.id);
+    const inferred = listedAgeSets(current.notes, []).find((item) => item.id === set.id)?.birth;
+    const previous = kept?.birth ?? inferred;
+    const sameDay = previous != null && previous.year === set.birth.year && previous.month === set.birth.month && previous.day === set.birth.day;
+    const hasYears = current.notes.some((note) => parseAgeId(note.id)?.setId === set.id);
+    const ageSets = [...current.settings.ageSets.filter((item) => item.id !== set.id), set];
+    if (sameDay && hasYears) {
+      patch({ settings: { ...current.settings, ageSets } });
+      toast.success(set.name ? t("Name saved") : t("Saved"));
+      return;
+    }
+    const next = replaceAgeSet(current.notes, current.trash, made, set.id);
+    patch({ ...next, settings: { ...current.settings, ageSets } });
     toast.success(made.length === 1 ? t("1 age laid.") : t("{n} ages laid.", { n: made.length }));
+  }
+
+  function removeAgeSet(id: string, name: string) {
+    const label = name.trim();
+    setConfirm({
+      title: t("Remove this life"),
+      message: label
+        ? t("Remove {name}? Its years leave the timeline and the trash.", { name: label })
+        : t("Remove these years? They leave the timeline and the trash."),
+      confirmLabel: t("Remove"),
+      onConfirm: () => {
+        const current = dataRef.current;
+        if (!current) return;
+        const next = replaceAgeSet(current.notes, current.trash, [], id);
+        patch({ ...next, settings: { ...current.settings, ageSets: current.settings.ageSets.filter((item) => item.id !== id) } });
+        setConfirm(null);
+        toast.success(t("Years removed"));
+      },
+    });
   }
 
   function clearAll() {
@@ -1460,6 +1488,7 @@ export function TimelineApp() {
               <SettingsView
                 notes={data.notes}
                 trash={data.trash}
+                ageSets={data.settings.ageSets}
                 rightHanded={data.settings.rightHanded}
                 toolbar={data.settings.toolbar}
                 rule={data.settings.rule}
@@ -1580,7 +1609,8 @@ export function TimelineApp() {
                   commit({ ...current, settings: { ...current.settings, language } });
                 }}
                 onSample={loadSample}
-                onAges={layAges}
+                onAges={saveAgeSet}
+                onRemoveAge={removeAgeSet}
                 sealed={isVaultOn()}
                 passkey={deviceUnlock}
                 onSeal={async (passphrase) => {
